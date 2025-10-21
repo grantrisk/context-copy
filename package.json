@@ -22,7 +22,7 @@
     ],
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/your-username/context-copy.git"
+        "url": "git+https://github.com/grantrisk/context-copy.git"
     },
     "author": "Grant Risk",
     "license": "MIT",
