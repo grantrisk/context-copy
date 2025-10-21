@@ -12,6 +12,12 @@
         "start": "node index.js",
         "link": "npm link"
     },
+    "files": [
+        "index.js",
+        "src/",
+        "LICENSE",
+        "README.md"
+    ],
     "keywords": [
         "cli",
         "llm",
