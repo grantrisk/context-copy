@@ -7,22 +7,21 @@ import { glob } from "glob";
 // --- Default Ignore Patterns ---
 const DEFAULT_IGNORE_PATTERNS = [
     // --- Configuration/Meta ---
-    ".env*",
     "**/.env*",
-    "*.log",
-    "*.swp",             // Vim swap files
-    "*.bak",             // Backup files
-    "*~",                // Editor temporary files
-    ".DS_Store",
-    "thumbs.db",         // Windows cache
-    "Desktop.ini",       // Windows metadata
-    "*.iml",             // IntelliJ IDEA module files
+    "**/*.log",
+    "**/*.swp",             // Vim swap files
+    "**/*.bak",             // Backup files
+    "**/*~",                // Editor temporary files
+    "**/.DS_Store",
+    "**/thumbs.db",         // Windows cache
+    "**/Desktop.ini",       // Windows metadata
+    "**/*.iml",             // IntelliJ IDEA module files
     
     // --- Dependency/Lock Files ---
-    "yarn.lock",
-    "package-lock.json",
-    "Pipfile.lock",      // Python lock file
-    "go.sum",            // Go lock file
+    "**/yarn.lock",
+    "**/package-lock.json",
+    "**/Pipfile.lock",      // Python lock file
+    "**/go.sum",            // Go lock file
 
     // --- Critical Build/Dependency Directories ---
     "**/node_modules/**",
@@ -40,37 +39,37 @@ const DEFAULT_IGNORE_PATTERNS = [
     "**/vendor/**",         // Third-party dependencies
 
     // --- Compiled/Generated Files/Code ---
-    "*.min.js",          // Minified JavaScript
-    "*.pyc",
+    "**/*.min.js",          // Minified JavaScript
+    "**/*.pyc",
     "**/__pycache__/**",    // Python cache directory
-    "*.class",           // Java compiled
-    "*.jar",             // Java archives
-    "*.o",               // Compiled objects
-    "*.swo",
+    "**/*.class",           // Java compiled
+    "**/*.jar",             // Java archives
+    "**/*.o",               // Compiled objects
+    "**/*.swo",
 
     // --- Binary and Archive Files (Existing) ---
-    "*.png",
-    "*.jpg",
-    "*.jpeg",
-    "*.gif",
-    "*.ico",
-    "*.svg",
-    "*.webp",
-    "*.pdf",
-    "*.doc",
-    "*.docx",
-    "*.xls",
-    "*.xlsx",
-    "*.ppt",
-    "*.pptx",
-    "*.zip",
-    "*.tar",
-    "*.gz",
-    "*.rar",
-    "*.mp3",
-    "*.mp4",
-    "*.mov",
-    "*.avi",
+    "**/*.png",
+    "**/*.jpg",
+    "**/*.jpeg",
+    "**/*.gif",
+    "**/*.ico",
+    "**/*.svg",
+    "**/*.webp",
+    "**/*.pdf",
+    "**/*.doc",
+    "**/*.docx",
+    "**/*.xls",
+    "**/*.xlsx",
+    "**/*.ppt",
+    "**/*.pptx",
+    "**/*.zip",
+    "**/*.tar",
+    "**/*.gz",
+    "**/*.rar",
+    "**/*.mp3",
+    "**/*.mp4",
+    "**/*.mov",
+    "**/*.avi",
 ];
 
 // --- Context Size Thresholds ---
