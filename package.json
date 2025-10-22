@@ -10,7 +10,9 @@
     },
     "scripts": {
         "start": "node index.js",
-        "link": "npm link"
+        "link": "npm link",
+        "unlink": "npm unlink",
+        "test": "jest"
     },
     "files": [
         "index.js",

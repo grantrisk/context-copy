@@ -8,7 +8,7 @@ import { glob } from "glob";
 const DEFAULT_IGNORE_PATTERNS = [
     ".env*",
     "**/.env*",
-    "node_modules/**",
+    "**/node_modules/**",
     ".git/**",
     "dist/**",
     "build/**",
@@ -43,6 +43,33 @@ const DEFAULT_IGNORE_PATTERNS = [
     "*.avi",
 ];
 
+// --- Context Size Thresholds ---
+// Define thresholds for context size coloring (in characters)
+const CONTEXT_SIZE_THRESHOLDS = {
+    low: 10000, // Up to 10k chars (approx 2.5k tokens) - Green
+    medium: 50000, // Up to 50k chars (approx 12.5k tokens) - Yellow
+    high: 100000, // Up to 100k chars (approx 25k tokens) - Orange
+    // Over 100k chars will be Red
+};
+
+/**
+ * Gets the appropriate chalk color based on the content size.
+ * @param {number} charCount - The total number of characters.
+ * @returns {chalk.Chalk} - A chalk color function.
+ */
+function getContextSizeColor(charCount) {
+    if (charCount <= CONTEXT_SIZE_THRESHOLDS.low) {
+        return chalk.green;
+    }
+    if (charCount <= CONTEXT_SIZE_THRESHOLDS.medium) {
+        return chalk.yellow;
+    }
+    if (charCount <= CONTEXT_SIZE_THRESHOLDS.high) {
+        return chalk.hex("#FFA500"); // Orange
+    }
+    return chalk.red;
+}
+
 /**
  * Loads ignore patterns from a specified file and merges them with defaults.
  * @param {string} rootPath - The root directory of the project.
@@ -67,11 +94,76 @@ async function loadIgnorePatterns(rootPath, ignoreFilePath) {
 }
 
 /**
+ * Builds a nested object (tree) from a flat list of file paths.
+ * @param {string[]} fileList - A flat list of file paths.
+ * @returns {object} - A nested object representing the file structure.
+ */
+function buildFileTree(fileList) {
+    const tree = {};
+
+    for (const filePath of fileList) {
+        // Glob always uses forward slashes, which is great for consistency
+        const parts = filePath.split("/");
+        let currentNode = tree;
+
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isLastPart = i === parts.length - 1;
+
+            if (isLastPart) {
+                // This is a file
+                currentNode[part] = null; // Use null to mark a file
+            } else {
+                // This is a directory
+                if (!currentNode[part]) {
+                    currentNode[part] = {};
+                }
+                currentNode = currentNode[part];
+            }
+        }
+    }
+    return tree;
+}
+
+/**
+ * Recursively prints the file tree structure to the console.
+ * @param {object} node - The current node (directory) in the tree.
+ * @param {string} prefix - The string prefix (connectors) to prepend.
+ */
+function printFileTree(node, prefix) {
+    const entries = Object.keys(node);
+    entries.sort((a, b) => {
+        // Sort directories before files
+        const aIsFile = node[a] === null;
+        const bIsFile = node[b] === null;
+        if (aIsFile && !bIsFile) return 1;
+        if (!aIsFile && bIsFile) return -1;
+        return a.localeCompare(b); // Alphabetical sort for same types
+    });
+
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const isLastEntry = i === entries.length - 1;
+        const childNode = node[entry];
+
+        const connector = isLastEntry ? "└─" : "├─";
+        const childPrefix = isLastEntry ? "   " : "│  ";
+
+        console.log(chalk.gray(prefix + connector) + ` ${entry}`);
+
+        if (childNode !== null) {
+            // It's a directory, recurse
+            printFileTree(childNode, prefix + childPrefix);
+        }
+    }
+}
+
+/**
  * Recursively scans a directory, reads non-ignored files, and concatenates their content.
  * @param {string} dirPath - The directory to scan.
  * @param {string} rootPath - The project's root path for relative path calculation.
  * @param {string[]} ignorePatterns - An array of glob patterns to ignore.
- * @returns {Promise<{content: string, fileCount: number}>} - The concatenated content and file count.
+ * @returns {Promise<{content: string, fileCount: number, fileList: string[]}>} - The concatenated content, file count, and list of file paths.
  */
 async function processDirectory(dirPath, rootPath, ignorePatterns) {
     const allFiles = await glob("**/*", {
@@ -82,7 +174,7 @@ async function processDirectory(dirPath, rootPath, ignorePatterns) {
     });
 
     let concatenatedContent = "";
-    let filesRead = 0;
+    const fileList = [];
 
     for (const file of allFiles) {
         const fullPath = path.join(dirPath, file);
@@ -93,13 +185,13 @@ async function processDirectory(dirPath, rootPath, ignorePatterns) {
             concatenatedContent += `=== File: ${relativePath} ===\n\n`;
             concatenatedContent += fileContent;
             concatenatedContent += "\n\n";
-            filesRead++;
+            fileList.push(relativePath);
         } catch (err) {
             console.warn(chalk.yellow(`Skipping unreadable file: ${file}`));
         }
     }
 
-    return { content: concatenatedContent, fileCount: filesRead };
+    return { content: concatenatedContent, fileCount: fileList.length, fileList };
 }
 
 /**
@@ -117,7 +209,7 @@ export async function main(projectPath, options) {
         }
 
         const ignorePatterns = await loadIgnorePatterns(projectPath, options.ignoreFile);
-        const { content, fileCount } = await processDirectory(
+        const { content, fileCount, fileList } = await processDirectory(
             projectPath,
             projectPath,
             ignorePatterns
@@ -132,12 +224,30 @@ export async function main(projectPath, options) {
 
         await clipboard.write(content);
 
+        // --- New Console Output ---
+
+        console.log(chalk.blue.bold("\n--- Copied Files ---"));
+        // Build and print the file tree
+        const fileTree = buildFileTree(fileList);
+        printFileTree(fileTree, ""); // Start with an empty prefix
+
+        const charCount = content.length;
+        const lineCount = content.split("\n").length;
         const contentSizeKB = (Buffer.byteLength(content, "utf8") / 1024).toFixed(2);
-        console.log(
-            chalk.green.bold(
-                `\n✅ Success! Copied the content of ${fileCount} files (${contentSizeKB} KB) to the clipboard.`
-            )
-        );
+
+        const color = getContextSizeColor(charCount);
+
+        console.log(chalk.bold(color(`\n✅ Success! Copied ${fileCount} files to the clipboard.`)));
+        console.log(color(`   Total Lines: ${lineCount.toLocaleString()}`));
+        console.log(color(`   Total Chars: ${charCount.toLocaleString()}`));
+        console.log(color(`   Total Size: ${contentSizeKB} KB`));
+
+        if (color === chalk.red || color === chalk.hex("#FFA500")) {
+            console.log(
+                color.bold("   Warning: Context size is very large. This may exceed model limits.")
+            );
+        }
+        // --- End New Console Output ---
     } catch (error) {
         console.error(chalk.red.bold("\n❌ An error occurred:"));
         console.error(chalk.red(error.message));
