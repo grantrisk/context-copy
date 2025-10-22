@@ -26,23 +26,23 @@ const DEFAULT_IGNORE_PATTERNS = [
 
     // --- Critical Build/Dependency Directories ---
     "**/node_modules/**",
-    ".git/**",
-    "dist/**",
-    "build/**",
-    ".next/**",
-    ".idea/**",
-    "coverage/**",       // Test reports
-    "tmp/**",            // Temporary files
-    "temp/**",           // Temporary files
-    "log/**",            // Log directory
-    "out/**",            // Common output
-    "target/**",         // Rust/Java build output
-    "vendor/**",         // Third-party dependencies
+    "**/.git/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.next/**",
+    "**/.idea/**",
+    "**/coverage/**",       // Test reports
+    "**/tmp/**",            // Temporary files
+    "**/temp/**",           // Temporary files
+    "**/log/**",            // Log directory
+    "**/out/**",            // Common output
+    "**/target/**",         // Rust/Java build output
+    "**/vendor/**",         // Third-party dependencies
 
     // --- Compiled/Generated Files/Code ---
     "*.min.js",          // Minified JavaScript
     "*.pyc",
-    "__pycache__/**",    // Python cache directory
+    "**/__pycache__/**",    // Python cache directory
     "*.class",           // Java compiled
     "*.jar",             // Java archives
     "*.o",               // Compiled objects
