@@ -267,20 +267,21 @@ async function processDirectory(dirPath, ignorePatterns) {
 /**
  * Processes a single file.
  * @param {string} filePath - The path to the file.
+ * @param {string} projectRoot - The absolute path to the project root.
  * @returns {Promise<{content: string, fileCount: number, fileList: string[]}>}
  */
-async function processSingleFile(filePath) {
+async function processSingleFile(filePath, projectRoot) {
     const fileContent = await fs.readFile(filePath, 'utf-8')
-    const fileName = path.basename(filePath)
+    const relativePath = path.relative(projectRoot, filePath)
 
-    let concatenatedContent = `=== File: ${fileName} ===\n\n`
+    let concatenatedContent = `=== File: ${relativePath} ===\n\n`
     concatenatedContent += fileContent
     concatenatedContent += '\n\n'
 
     return {
         content: concatenatedContent,
         fileCount: 1,
-        fileList: [fileName],
+        fileList: [relativePath],
     }
 }
 
@@ -315,19 +316,102 @@ async function findProjectRoot(startPath) {
 }
 
 /**
- * Loads tsconfig/jsconfig and returns a path-matching function.
+ * Loads tsconfig/jsconfig and returns the raw alias configuration.
  * @param {string} rootPath - The project root directory.
- * @returns {function(string): string | undefined} - A function to resolve aliases.
+ * @returns {{paths: Record<string, string[]>} | null} - The alias config or null.
  */
-function getAliasResolver(rootPath) {
+function loadAliasConfig(rootPath) {
     const configLoaderResult = loadConfig(rootPath)
+
     if (configLoaderResult.resultType === 'failed') {
-        // No tsconfig/jsconfig, return a no-op resolver
-        return () => undefined
+        console.warn(
+            chalk.yellow(
+                `\nWarning: Could not load tsconfig/jsconfig from ${rootPath}. Alias resolution will be disabled.`
+            )
+        )
+        console.warn(chalk.yellow(`  Reason: ${configLoaderResult.message}`))
+        return null
     }
 
-    const { absoluteBaseUrl, paths } = configLoaderResult
-    return createMatchPath(absoluteBaseUrl, paths)
+    const { paths } = configLoaderResult
+
+    if (!paths || Object.keys(paths).length === 0) {
+        console.warn(
+            chalk.yellow(
+                `\nWarning: Loaded ${configLoaderResult.configFileAbsolutePath}, but no "paths" were found. Alias resolution will not work.`
+            )
+        )
+        return null
+    }
+
+    console.log(
+        chalk.gray(
+            `Loaded path configuration from: ${configLoaderResult.configFileAbsolutePath}`
+        )
+    )
+
+    // Clean the paths: remove trailing "/*"
+    const cleanedPaths = {}
+    for (const [alias, aliasPaths] of Object.entries(paths)) {
+        // We only take the first path mapping, which is standard.
+        cleanedPaths[alias.replace(/\/\*$/, '')] = aliasPaths.map((p) =>
+            p.replace(/\/\*$/, '')
+        )[0]
+    }
+
+    return { paths: cleanedPaths }
+}
+
+/**
+ * Scans the project and builds a map for resolving module paths.
+ * @param {string} projectRoot - The absolute path to the project root.
+ * @param {string[]} ignorePatterns - An array of glob patterns to ignore.
+ * @returns {Promise<Map<string, string>>}
+ * A map where:
+ * Key: A "module path" (e.g., 'src/components/ui/button', 'src/components/ui')
+ * Value: The *actual* relative file path (e.g., 'src/components/ui/button.tsx', 'src/components/ui/index.tsx')
+ */
+async function buildFileMap(projectRoot, ignorePatterns) {
+    console.log(chalk.gray('Building project file map...'))
+    const fileMap = new Map()
+    const allFiles = await glob('**/*', {
+        cwd: projectRoot,
+        dot: true,
+        nodir: true,
+        ignore: ignorePatterns,
+    })
+
+    const extensions = ['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.json']
+    const extRegex = new RegExp(
+        `(${extensions.join('|').replace(/\./g, '\\.')})$`
+    )
+
+    for (const file of allFiles) {
+        // Use forward slashes for consistency, as glob does
+        const relativePath = file.replace(/\\/g, '/')
+        const fileExt = path.extname(relativePath)
+
+        if (extensions.includes(fileExt)) {
+            const relativePathNoExt = relativePath.replace(extRegex, '')
+
+            // Add the path without extension: 'src/components/button' -> 'src/components/button.tsx'
+            if (!fileMap.has(relativePathNoExt)) {
+                fileMap.set(relativePathNoExt, relativePath)
+            }
+
+            // Check if it's an index file: 'src/components/index.tsx'
+            const baseName = path.basename(relativePathNoExt)
+            if (baseName === 'index') {
+                const dirPath = path.dirname(relativePathNoExt) // 'src/components'
+                // Add the directory path: 'src/components' -> 'src/components/index.tsx'
+                if (dirPath !== '.' && !fileMap.has(dirPath)) {
+                    fileMap.set(dirPath, relativePath)
+                }
+            }
+        }
+    }
+    console.log(chalk.gray(`File map built with ${fileMap.size} entries.`))
+    return fileMap
 }
 
 /**
@@ -396,7 +480,7 @@ async function resolveImportPath(basePath) {
 }
 
 /**
- * Processes a single file and all its local imports.
+ * Processes a single file and all its local imports using a pre-built file map.
  * @param {string} startFilePath - The absolute path to the starting file.
  * @param {string} projectRoot - The absolute path to the project root.
  * @param {object} options - The CLI options.
@@ -412,21 +496,37 @@ async function processFileWithImports(
     const processedFiles = new Set()
     let concatenatedContent = ''
     const fileList = []
-    const aliasResolver = getAliasResolver(projectRoot)
-    const ig = ignore().add(ignorePatterns) // Use a queue for breadth-first traversal
 
+    // --- NEW STRATEGY ---
+    // 1. Build the file map ONCE.
+    const fileMap = await buildFileMap(projectRoot, ignorePatterns)
+    // 2. Load the alias config ONCE.
+    const aliasConfig = loadAliasConfig(projectRoot)
+    // Sort aliases from longest to shortest to handle '@/' and '@/components' correctly
+    const sortedAliasKeys = aliasConfig
+        ? Object.keys(aliasConfig.paths).sort((a, b) => b.length - a.length)
+        : []
+    // --- END NEW STRATEGY ---
+
+    const ig = ignore().add(ignorePatterns)
     const queue = [{ filePath: path.resolve(startFilePath), level: 0 }]
     const maxLevel = options.deep ? Infinity : 1
 
     while (queue.length > 0) {
         const { filePath, level } = queue.shift()
-        const relativeToRoot = path.relative(projectRoot, filePath) // 1. Skip if already processed or ignored
 
+        // Use relative path for all internal logic (ignoring, file map, etc.)
+        const relativeToRoot = path
+            .relative(projectRoot, filePath)
+            .replace(/\\/g, '/')
+
+        // 1. Skip if already processed or ignored
         if (processedFiles.has(filePath) || ig.ignores(relativeToRoot)) {
             continue
         }
-        processedFiles.add(filePath) // 2. Read file
+        processedFiles.add(filePath)
 
+        // 2. Read file
         let fileContent
         try {
             fileContent = await fs.readFile(filePath, 'utf-8')
@@ -435,47 +535,107 @@ async function processFileWithImports(
                 chalk.yellow(`Skipping unreadable import: ${relativeToRoot}`)
             )
             continue
-        } // 3. Add to content
+        }
 
+        // 3. Add to content
         fileList.push(relativeToRoot)
         concatenatedContent += `=== File: ${relativeToRoot} ===\n\n`
         concatenatedContent += fileContent
-        concatenatedContent += '\n\n' // 4. Stop if max depth reached
+        concatenatedContent += '\n\n'
 
+        // 4. Stop if max depth reached
         if (level >= maxLevel) {
             continue
-        } // 5. Find, resolve, and add imports to queue
+        }
 
+        // 5. Find, resolve, and add imports to queue
         const imports = parseImports(fileContent)
-        const fileDir = path.dirname(filePath)
+        const fileDirRelative = path.dirname(relativeToRoot) // e.g., 'src/components/header'
+
+        console.log(chalk.magenta(`\nParsing imports for: ${relativeToRoot}`))
 
         for (const importPath of imports) {
-            let resolvedPath // A. Try alias resolution
+            let resolvedRelativePath = null
+            let resolvedModulePath = null // The path *before* looking in the map
 
-            resolvedPath = aliasResolver(importPath) // B. If not aliased, try relative
-
-            if (!resolvedPath && importPath.startsWith('.')) {
-                resolvedPath = path.resolve(fileDir, importPath)
-            } // C. If not aliased and not relative, it's a package (e.g., 'react'). Ignore it.
-            if (resolvedPath) {
-                const finalPath = await resolveImportPath(resolvedPath)
-                if (finalPath) {
-                    // Check if the *new* file is ignored before adding
-                    const finalRelativeToRoot = path.relative(
-                        projectRoot,
-                        finalPath
-                    )
-                    if (
-                        !ig.ignores(finalRelativeToRoot) &&
-                        !processedFiles.has(finalPath)
-                    ) {
-                        queue.push({ filePath: finalPath, level: level + 1 })
+            if (importPath.startsWith('.')) {
+                // --- HANDLE RELATIVE IMPORTS ---
+                resolvedModulePath = path.join(fileDirRelative, importPath)
+            } else if (aliasConfig) {
+                // --- HANDLE ALIAS IMPORTS ---
+                let isAliased = false
+                for (const alias of sortedAliasKeys) {
+                    if (importPath.startsWith(alias)) {
+                        const aliasPath = aliasConfig.paths[alias]
+                        const restOfPath = importPath.substring(alias.length)
+                        resolvedModulePath = path.join(aliasPath, restOfPath)
+                        isAliased = true
+                        break
                     }
-                } else {
-                    console.warn(
-                        chalk.yellow(`Could not resolve import: ${importPath}`)
-                    )
                 }
+                if (!isAliased) {
+                    console.log(
+                        chalk.gray(`  [Package]  Skipping '${importPath}'`)
+                    )
+                    continue
+                }
+            } else {
+                // --- NO ALIASES, MUST BE PACKAGE ---
+                console.log(chalk.gray(`  [Package]  Skipping '${importPath}'`))
+                continue
+            }
+
+            // Normalize the path (e.g., 'src/components/../context' -> 'src/context')
+            resolvedModulePath = path
+                .normalize(resolvedModulePath)
+                .replace(/\\/g, '/')
+
+            // --- LOOKUP IN FILE MAP ---
+            resolvedRelativePath = fileMap.get(resolvedModulePath)
+
+            if (resolvedRelativePath) {
+                const type = importPath.startsWith('.') ? 'Relative' : 'Alias'
+                console.log(
+                    chalk.gray(
+                        `  [${type}]   '${importPath}' -> '${resolvedRelativePath}'`
+                    )
+                )
+
+                const finalAbsolutePath = path.join(
+                    projectRoot,
+                    resolvedRelativePath
+                )
+
+                if (ig.ignores(resolvedRelativePath)) {
+                    console.log(
+                        chalk.yellow(
+                            `  [Ignore]   Skipping ${resolvedRelativePath}`
+                        )
+                    )
+                } else if (processedFiles.has(finalAbsolutePath)) {
+                    console.log(
+                        chalk.gray(
+                            `  [Done]     Already processed ${resolvedRelativePath}`
+                        )
+                    )
+                } else {
+                    console.log(
+                        chalk.cyan(
+                            `  [Queue]    Adding ${resolvedRelativePath} to queue`
+                        )
+                    )
+                    queue.push({
+                        filePath: finalAbsolutePath,
+                        level: level + 1,
+                    })
+                }
+            } else if (resolvedModulePath) {
+                // We resolved a path, but it's not in our file map
+                console.warn(
+                    chalk.yellow(
+                        `  [Resolve]  Could not find file for: '${importPath}' (Resolved to: ${resolvedModulePath})`
+                    )
+                )
             }
         }
     }
@@ -566,7 +726,7 @@ export async function main(targetPath, options) {
                     ignorePatterns
                 )
             } else {
-                result = await processSingleFile(targetPath)
+                result = await processSingleFile(targetPath, projectRoot)
             }
         } else {
             throw new Error('The specified path is not a file or a directory.')
