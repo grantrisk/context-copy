@@ -9,19 +9,19 @@ const DEFAULT_IGNORE_PATTERNS = [
     // --- Configuration/Meta ---
     "**/.env*",
     "**/*.log",
-    "**/*.swp",             // Vim swap files
-    "**/*.bak",             // Backup files
-    "**/*~",                // Editor temporary files
+    "**/*.swp", // Vim swap files
+    "**/*.bak", // Backup files
+    "**/*~", // Editor temporary files
     "**/.DS_Store",
-    "**/thumbs.db",         // Windows cache
-    "**/Desktop.ini",       // Windows metadata
-    "**/*.iml",             // IntelliJ IDEA module files
-    
+    "**/thumbs.db", // Windows cache
+    "**/Desktop.ini", // Windows metadata
+    "**/*.iml", // IntelliJ IDEA module files
+
     // --- Dependency/Lock Files ---
     "**/yarn.lock",
     "**/package-lock.json",
-    "**/Pipfile.lock",      // Python lock file
-    "**/go.sum",            // Go lock file
+    "**/Pipfile.lock", // Python lock file
+    "**/go.sum", // Go lock file
 
     // --- Critical Build/Dependency Directories ---
     "**/node_modules/**",
@@ -30,21 +30,21 @@ const DEFAULT_IGNORE_PATTERNS = [
     "**/build/**",
     "**/.next/**",
     "**/.idea/**",
-    "**/coverage/**",       // Test reports
-    "**/tmp/**",            // Temporary files
-    "**/temp/**",           // Temporary files
-    "**/log/**",            // Log directory
-    "**/out/**",            // Common output
-    "**/target/**",         // Rust/Java build output
-    "**/vendor/**",         // Third-party dependencies
+    "**/coverage/**", // Test reports
+    "**/tmp/**", // Temporary files
+    "**/temp/**", // Temporary files
+    "**/log/**", // Log directory
+    "**/out/**", // Common output
+    "**/target/**", // Rust/Java build output
+    "**/vendor/**", // Third-party dependencies
 
     // --- Compiled/Generated Files/Code ---
-    "**/*.min.js",          // Minified JavaScript
+    "**/*.min.js", // Minified JavaScript
     "**/*.pyc",
-    "**/__pycache__/**",    // Python cache directory
-    "**/*.class",           // Java compiled
-    "**/*.jar",             // Java archives
-    "**/*.o",               // Compiled objects
+    "**/__pycache__/**", // Python cache directory
+    "**/*.class", // Java compiled
+    "**/*.jar", // Java archives
+    "**/*.o", // Compiled objects
     "**/*.swo",
 
     // --- Binary and Archive Files (Existing) ---
@@ -100,26 +100,37 @@ function getContextSizeColor(charCount) {
 }
 
 /**
- * Loads ignore patterns from a specified file and merges them with defaults.
+ * Loads ignore patterns from default, .gitignore, and custom ignore files.
  * @param {string} rootPath - The root directory of the project.
- * @param {string} ignoreFilePath - The path to the custom ignore file.
+ * @param {string} customIgnoreFileName - The name of the custom ignore file.
  * @returns {Promise<string[]>} - A promise that resolves to an array of ignore patterns.
  */
-async function loadIgnorePatterns(rootPath, ignoreFilePath) {
-    const customIgnorePath = path.resolve(rootPath, ignoreFilePath);
-    let customPatterns = [];
-    try {
-        const content = await fs.readFile(customIgnorePath, "utf-8");
-        customPatterns = content.split("\n").filter((line) => line.trim() && !line.startsWith("#"));
-    } catch (error) {
-        // It's okay if the ignore file doesn't exist.
-        if (error.code !== "ENOENT") {
-            console.warn(
-                chalk.yellow(`Warning: Could not read custom ignore file at ${customIgnorePath}.`)
-            );
+async function loadIgnorePatterns(rootPath, customIgnoreFileName) {
+    const allPatterns = new Set(DEFAULT_IGNORE_PATTERNS);
+
+    // Helper to read and parse an ignore file
+    const parseIgnoreFile = async (filePath) => {
+        try {
+            const content = await fs.readFile(filePath, "utf-8");
+            content
+                .split("\n")
+                .map((line) => line.trim())
+                .filter((line) => line && !line.startsWith("#"))
+                .forEach((pattern) => allPatterns.add(pattern));
+        } catch (error) {
+            if (error.code !== "ENOENT") {
+                console.warn(chalk.yellow(`Warning: Could not read ignore file at ${filePath}.`));
+            }
         }
-    }
-    return [...DEFAULT_IGNORE_PATTERNS, ...customPatterns];
+    };
+
+    // 1. Read .gitignore
+    await parseIgnoreFile(path.resolve(rootPath, ".gitignore"));
+
+    // 2. Read custom ignore file (e.g., .contextignore)
+    await parseIgnoreFile(path.resolve(rootPath, customIgnoreFileName));
+
+    return [...allPatterns];
 }
 
 /**
@@ -176,7 +187,7 @@ function printFileTree(node, prefix) {
         const childNode = node[entry];
 
         const connector = isLastEntry ? "└─" : "├─";
-        const childPrefix = isLastEntry ? "   " : "│  ";
+        const childPrefix = isLastEntry ? "  " : "│ ";
 
         console.log(chalk.gray(prefix + connector) + ` ${entry}`);
 
@@ -188,13 +199,12 @@ function printFileTree(node, prefix) {
 }
 
 /**
- * Recursively scans a directory, reads non-ignored files, and concatenates their content.
+ * Processes a directory, reads non-ignored files, and concatenates their content.
  * @param {string} dirPath - The directory to scan.
- * @param {string} rootPath - The project's root path for relative path calculation.
  * @param {string[]} ignorePatterns - An array of glob patterns to ignore.
- * @returns {Promise<{content: string, fileCount: number, fileList: string[]}>} - The concatenated content, file count, and list of file paths.
+ * @returns {Promise<{content: string, fileCount: number, fileList: string[]}>}
  */
-async function processDirectory(dirPath, rootPath, ignorePatterns) {
+async function processDirectory(dirPath, ignorePatterns) {
     const allFiles = await glob("**/*", {
         cwd: dirPath,
         dot: true, // Include dotfiles
@@ -209,7 +219,8 @@ async function processDirectory(dirPath, rootPath, ignorePatterns) {
         const fullPath = path.join(dirPath, file);
         try {
             const fileContent = await fs.readFile(fullPath, "utf-8");
-            const relativePath = path.relative(rootPath, fullPath);
+            // Use the relative path from the glob result directly
+            const relativePath = file;
 
             concatenatedContent += `=== File: ${relativePath} ===\n\n`;
             concatenatedContent += fileContent;
@@ -224,59 +235,83 @@ async function processDirectory(dirPath, rootPath, ignorePatterns) {
 }
 
 /**
+ * Processes a single file.
+ * @param {string} filePath - The path to the file.
+ * @returns {Promise<{content: string, fileCount: number, fileList: string[]}>}
+ */
+async function processSingleFile(filePath) {
+    const fileContent = await fs.readFile(filePath, "utf-8");
+    const fileName = path.basename(filePath);
+
+    let concatenatedContent = `=== File: ${fileName} ===\n\n`;
+    concatenatedContent += fileContent;
+    concatenatedContent += "\n\n";
+
+    return {
+        content: concatenatedContent,
+        fileCount: 1,
+        fileList: [fileName],
+    };
+}
+
+/**
+ * Displays the final summary report to the console.
+ * @param {string} content - The concatenated content.
+ * @param {number} fileCount - The number of files processed.
+ * @param {string[]} fileList - The list of processed files.
+ */
+function displaySummary(content, fileCount, fileList) {
+    console.log(chalk.blue.bold("\n--- Copied Files ---"));
+    const fileTree = buildFileTree(fileList);
+    printFileTree(fileTree, "");
+
+    const charCount = content.length;
+    const lineCount = content.split("\n").length;
+    const contentSizeKB = (Buffer.byteLength(content, "utf8") / 1024).toFixed(2);
+    const color = getContextSizeColor(charCount);
+
+    console.log(chalk.bold(color(`\n✅ Success! Copied ${fileCount} files to the clipboard.`)));
+    console.log(color(`   Total Lines: ${lineCount.toLocaleString()}`));
+    console.log(color(`   Total Chars: ${charCount.toLocaleString()}`));
+    console.log(color(`   Total Size: ${contentSizeKB} KB`));
+
+    if (color === chalk.red || color === chalk.hex("#FFA500")) {
+        console.log(
+            color.bold("   Warning: Context size is very large. This may exceed model limits.")
+        );
+    }
+}
+
+/**
  * The main function that orchestrates the entire process.
- * @param {string} projectPath - The full path to the project directory.
+ * @param {string} targetPath - The full path to the project directory or file.
  * @param {object} options - The CLI options from commander.
  */
-export async function main(projectPath, options) {
+export async function main(targetPath, options) {
     try {
-        console.log(chalk.blue(`🚀 Starting to scan directory: ${projectPath}`));
+        console.log(chalk.blue(`🚀 Scanning path: ${targetPath}`));
 
-        const stats = await fs.stat(projectPath);
-        if (!stats.isDirectory()) {
-            throw new Error("The specified path is not a directory.");
+        const stats = await fs.stat(targetPath);
+        let result;
+
+        if (stats.isDirectory()) {
+            const ignorePatterns = await loadIgnorePatterns(targetPath, options.ignoreFile);
+            result = await processDirectory(targetPath, ignorePatterns);
+        } else if (stats.isFile()) {
+            result = await processSingleFile(targetPath);
+        } else {
+            throw new Error("The specified path is not a file or a directory.");
         }
 
-        const ignorePatterns = await loadIgnorePatterns(projectPath, options.ignoreFile);
-        const { content, fileCount, fileList } = await processDirectory(
-            projectPath,
-            projectPath,
-            ignorePatterns
-        );
+        const { content, fileCount, fileList } = result;
 
         if (fileCount === 0) {
-            console.log(
-                chalk.yellow("No files were read after applying ignore rules. Nothing to copy.")
-            );
+            console.log(chalk.yellow("No files were read. Nothing to copy."));
             return;
         }
 
         await clipboard.write(content);
-
-        // --- New Console Output ---
-
-        console.log(chalk.blue.bold("\n--- Copied Files ---"));
-        // Build and print the file tree
-        const fileTree = buildFileTree(fileList);
-        printFileTree(fileTree, ""); // Start with an empty prefix
-
-        const charCount = content.length;
-        const lineCount = content.split("\n").length;
-        const contentSizeKB = (Buffer.byteLength(content, "utf8") / 1024).toFixed(2);
-
-        const color = getContextSizeColor(charCount);
-
-        console.log(chalk.bold(color(`\n✅ Success! Copied ${fileCount} files to the clipboard.`)));
-        console.log(color(`   Total Lines: ${lineCount.toLocaleString()}`));
-        console.log(color(`   Total Chars: ${charCount.toLocaleString()}`));
-        console.log(color(`   Total Size: ${contentSizeKB} KB`));
-
-        if (color === chalk.red || color === chalk.hex("#FFA500")) {
-            console.log(
-                color.bold("   Warning: Context size is very large. This may exceed model limits.")
-            );
-        }
-        // --- End New Console Output ---
+        displaySummary(content, fileCount, fileList);
     } catch (error) {
         console.error(chalk.red.bold("\n❌ An error occurred:"));
         console.error(chalk.red(error.message));
