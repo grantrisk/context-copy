@@ -3,6 +3,7 @@ import path from "path";
 import clipboard from "clipboardy";
 import chalk from "chalk";
 import { glob } from "glob";
+import { get_encoding } from "tiktoken";
 
 // --- Default Ignore Patterns ---
 const DEFAULT_IGNORE_PATTERNS = [
@@ -73,30 +74,53 @@ const DEFAULT_IGNORE_PATTERNS = [
 ];
 
 // --- Context Size Thresholds ---
-// Define thresholds for context size coloring (in characters)
+// Define thresholds for context size coloring (in tokens)
 const CONTEXT_SIZE_THRESHOLDS = {
-    low: 10000, // Up to 10k chars (approx 2.5k tokens) - Green
-    medium: 50000, // Up to 50k chars (approx 12.5k tokens) - Yellow
-    high: 100000, // Up to 100k chars (approx 25k tokens) - Orange
-    // Over 100k chars will be Red
+    low: 4000, // Safe for most models - Green
+    medium: 16000, // Fits in moderate context models - Yellow
+    high: 100000, // Fits in large context models - Orange
+    // Over 100k tokens will be Red
 };
 
 /**
- * Gets the appropriate chalk color based on the content size.
- * @param {number} charCount - The total number of characters.
+ * Gets the appropriate chalk color based on the token count.
+ * @param {number} tokenCount - The total number of tokens.
  * @returns {chalk.Chalk} - A chalk color function.
  */
-function getContextSizeColor(charCount) {
-    if (charCount <= CONTEXT_SIZE_THRESHOLDS.low) {
+function getContextSizeColor(tokenCount) {
+    if (tokenCount <= CONTEXT_SIZE_THRESHOLDS.low) {
         return chalk.green;
     }
-    if (charCount <= CONTEXT_SIZE_THRESHOLDS.medium) {
+    if (tokenCount <= CONTEXT_SIZE_THRESHOLDS.medium) {
         return chalk.yellow;
     }
-    if (charCount <= CONTEXT_SIZE_THRESHOLDS.high) {
+    if (tokenCount <= CONTEXT_SIZE_THRESHOLDS.high) {
         return chalk.hex("#FFA500"); // Orange
     }
     return chalk.red;
+}
+
+/**
+ * Estimates the number of tokens in a given text using tiktoken.
+ * @param {string} text - The text to analyze.
+ * @returns {number} - The estimated number of tokens.
+ */
+function countTokens(text) {
+    // "cl100k_base" is the encoding for gpt-4, gpt-3.5-turbo, and text-embedding-ada-002.
+    try {
+        const encoding = get_encoding("cl100k_base");
+        const tokens = encoding.encode(text);
+        encoding.free(); // Important to free memory
+        return tokens.length;
+    } catch (error) {
+        console.warn(
+            chalk.yellow(
+                "\nWarning: 'tiktoken' failed. Falling back to character-based token estimation."
+            )
+        );
+        // A common fallback is to assume ~4 characters per token.
+        return Math.floor(text.length / 4);
+    }
 }
 
 /**
@@ -267,17 +291,19 @@ function displaySummary(content, fileCount, fileList) {
 
     const charCount = content.length;
     const lineCount = content.split("\n").length;
+    const tokenCount = countTokens(content);
     const contentSizeKB = (Buffer.byteLength(content, "utf8") / 1024).toFixed(2);
-    const color = getContextSizeColor(charCount);
+    const color = getContextSizeColor(tokenCount);
 
     console.log(chalk.bold(color(`\n✅ Success! Copied ${fileCount} files to the clipboard.`)));
-    console.log(color(`   Total Lines: ${lineCount.toLocaleString()}`));
-    console.log(color(`   Total Chars: ${charCount.toLocaleString()}`));
-    console.log(color(`   Total Size: ${contentSizeKB} KB`));
+    console.log(color(`    Total Tokens (est.): ${tokenCount.toLocaleString()}`));
+    console.log(color(`    Total Lines: ${lineCount.toLocaleString()}`));
+    console.log(color(`    Total Chars: ${charCount.toLocaleString()}`));
+    console.log(color(`    Total Size: ${contentSizeKB} KB`));
 
     if (color === chalk.red || color === chalk.hex("#FFA500")) {
         console.log(
-            color.bold("   Warning: Context size is very large. This may exceed model limits.")
+            color.bold("    Warning: Context size is very large. This may exceed model limits.")
         );
     }
 }
