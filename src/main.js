@@ -5,7 +5,7 @@ import chalk from 'chalk'
 import { glob } from 'glob'
 import { get_encoding } from 'tiktoken'
 import { parse } from '@babel/parser'
-import { createMatchPath, loadConfig } from 'tsconfig-paths'
+import { loadConfig } from 'tsconfig-paths'
 import ignore from 'ignore'
 
 // --- Default Ignore Patterns ---
@@ -494,33 +494,6 @@ function parseImports(fileContent) {
 }
 
 /**
- * Tries to resolve an import path to an actual file, checking extensions.
- * @param {string} basePath - The import path (already resolved for aliases/relativity).
- * @returns {Promise<string | null>} - The full path to the file, or null.
- */
-async function resolveImportPath(basePath) {
-    const extensions = ['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.json'] // 1. Try as-is
-    try {
-        if ((await fs.stat(basePath)).isFile()) return basePath
-    } catch (e) {} // 2. Try with extensions
-
-    for (const ext of extensions) {
-        try {
-            const fullPath = basePath + ext
-            if ((await fs.stat(fullPath)).isFile()) return fullPath
-        } catch (e) {}
-    } // 3. Try as a directory (index.js, etc.)
-
-    for (const ext of extensions) {
-        try {
-            const fullPath = path.join(basePath, 'index' + ext)
-            if ((await fs.stat(fullPath)).isFile()) return fullPath
-        } catch (e) {}
-    }
-    return null // Not found
-}
-
-/**
  * Processes a single file and all its local imports using a pre-built file map.
  * @param {string} startFilePath - The absolute path to the starting file.
  * @param {string} projectRoot - The absolute path to the project root.
@@ -773,7 +746,8 @@ export async function main(targetPath, options) {
             throw new Error('The specified path is not a file or a directory.')
         }
 
-        let { content, fileCount, fileList } = result
+        let { content } = result
+        const { fileCount, fileList } = result
 
         if (fileCount === 0) {
             console.log(chalk.yellow('No files were read. Nothing to copy.'))
@@ -785,7 +759,7 @@ export async function main(targetPath, options) {
                 chalk.blue.bold('🌲 Prepending file tree to context...')
             )
             const fileTreeObject = buildFileTree(fileList)
-            let treeString = formatFileTreeForContext(fileTreeObject)
+            const treeString = formatFileTreeForContext(fileTreeObject)
 
             const treeHeader =
                 '=====================================\n' +
@@ -804,6 +778,6 @@ export async function main(targetPath, options) {
     } catch (error) {
         console.error(chalk.red.bold('\n❌ An error occurred:'))
         console.error(chalk.red(error.message))
-        process.exit(1)
+        throw error
     }
 }

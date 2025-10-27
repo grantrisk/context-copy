@@ -12,13 +12,17 @@
         "start": "node index.js",
         "link": "npm link",
         "unlink": "npm unlink",
-        "test": "jest"
+        "test": "jest",
+        "lint": "eslint \"**/*.js\"",
+        "format": "prettier --write \"**/*.{js,cjs,json,md}\"",
+        "prepare": "husky install"
     },
     "files": [
         "index.js",
         "src/",
         "LICENSE",
-        "README.md"
+        "README.md",
+        ".eslintrc.cjs"
     ],
     "keywords": [
         "cli",
@@ -47,7 +51,14 @@
     },
     "devDependencies": {
         "jest": "^29.7.0",
-        "semantic-release": "^24.2.9"
+        "semantic-release": "^24.2.9",
+        "eslint": "^8.57.0",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-plugin-import": "^2.29.1",
+        "eslint-plugin-node": "^11.1.0",
+        "eslint-plugin-promise": "^6.1.1",
+        "husky": "^9.0.11",
+        "lint-staged": "^15.2.7"
     },
     "release": {
         "branches": [
@@ -58,6 +69,20 @@
             "@semantic-release/release-notes-generator",
             "@semantic-release/npm",
             "@semantic-release/github"
+        ]
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "lint-staged"
+        }
+    },
+    "lint-staged": {
+        "*.js": [
+            "prettier --write",
+            "eslint --fix"
+        ],
+        "*.{cjs,json,md}": [
+            "prettier --write"
         ]
     }
 }
