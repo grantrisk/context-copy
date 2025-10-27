@@ -3,11 +3,18 @@
 
 import { program } from 'commander'
 import path from 'path'
+import { fileURLToPath } from 'url'
+import { readFileSync } from 'fs'
 import { main } from './src/main.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const packageJsonPath = path.resolve(__dirname, 'package.json')
+const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
 
 program
     .name('context-copy')
-    .version('1.0.0')
+    .version(pkg.version)
     .description(
         'A CLI to aggregate and copy project file contents for LLM context.'
     )
