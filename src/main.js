@@ -225,6 +225,47 @@ function printFileTree(node, prefix) {
 }
 
 /**
+ * Recursively generates a plain text string of the file tree structure.
+ * This version is for prepending to the LLM context.
+ * @param {object} node - The current node (directory) in the tree.
+ * @param {string} prefix - The string prefix (connectors) to prepend.
+ * @param {string} treeString - The accumulator string.
+ * @returns {string} - The updated accumulator string.
+ */
+function formatFileTreeForContext(node, prefix = '', treeString = '') {
+    const entries = Object.keys(node)
+    entries.sort((a, b) => {
+        // Sort directories before files
+        const aIsFile = node[a] === null
+        const bIsFile = node[b] === null
+        if (aIsFile && !bIsFile) return 1
+        if (!aIsFile && bIsFile) return -1
+        return a.localeCompare(b) // Alphabetical sort for same types
+    })
+
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i]
+        const isLastEntry = i === entries.length - 1
+        const childNode = node[entry]
+
+        const connector = isLastEntry ? '└─' : '├─'
+        const childPrefix = isLastEntry ? '  ' : '│ '
+
+        treeString += `${prefix}${connector} ${entry}\n`
+
+        if (childNode !== null) {
+            // It's a directory, recurse
+            treeString = formatFileTreeForContext(
+                childNode,
+                prefix + childPrefix,
+                treeString
+            )
+        }
+    }
+    return treeString
+}
+
+/**
  * Processes a directory, reads non-ignored files, and concatenates their content.
  * @param {string} dirPath - The directory to scan.
  * @param {string[]} ignorePatterns - An array of glob patterns to ignore.
@@ -732,11 +773,30 @@ export async function main(targetPath, options) {
             throw new Error('The specified path is not a file or a directory.')
         }
 
-        const { content, fileCount, fileList } = result
+        let { content, fileCount, fileList } = result
 
         if (fileCount === 0) {
             console.log(chalk.yellow('No files were read. Nothing to copy.'))
             return
+        }
+
+        if (options.prependTree) {
+            console.log(
+                chalk.blue.bold('🌲 Prepending file tree to context...')
+            )
+            const fileTreeObject = buildFileTree(fileList)
+            let treeString = formatFileTreeForContext(fileTreeObject)
+
+            const treeHeader =
+                '=====================================\n' +
+                '==== PROJECT FILE STRUCTURE TREE ====\n' +
+                '=====================================\n\n'
+            const treeFooter =
+                '\n=====================================\n' +
+                '==== END FILE STRUCTURE TREE ====\n' +
+                '=====================================\n\n\n'
+
+            content = treeHeader + treeString + treeFooter + content
         }
 
         await clipboard.write(content)

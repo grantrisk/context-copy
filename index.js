@@ -32,6 +32,10 @@ program
         '-d, --deep',
         'Recursively follow imports (requires --follow-imports).'
     )
+    .option(
+        '-p, --prepend-tree',
+        'Include the text-based file tree at the very top of the copied context.'
+    )
     .action(async (projectPath, options) => {
         // Resolve the full path to ensure consistency
         const fullPath = path.resolve(projectPath)
