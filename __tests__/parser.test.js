@@ -1,4 +1,5 @@
 import { parseImports } from '../src/lib/parser.js'
+import { describe, it, expect, jest } from '@jest/globals'
 
 describe('parser.js', () => {
     describe('parseImports', () => {

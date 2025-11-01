@@ -2,11 +2,14 @@ import { loadIgnorePatterns } from '../src/lib/config.js'
 import { DEFAULT_IGNORE_PATTERNS } from '../src/lib/constants.js'
 import fs from 'fs/promises'
 import path from 'path'
+import { describe, it, expect, beforeEach, jest } from '@jest/globals'
 
-// Mock the 'fs/promises' module
-jest.mock('fs/promises', () => ({
-    readFile: jest.fn(),
-}))
+jest.mock('fs/promises', () => {
+    const { jest } = require('@jest/globals') // Use require here
+    return {
+        readFile: jest.fn(),
+    }
+})
 
 // Cast the mock for type safety in the test
 const mockedFsReadFile = fs.readFile
@@ -26,10 +29,7 @@ describe('config.js', () => {
                 if (filePath === path.resolve('/fake/project', '.gitignore')) {
                     return Promise.resolve('*.log\nnode_modules/\n')
                 }
-                if (
-                    filePath ===
-                    path.resolve('/fake/project', '.my-ignore')
-                ) {
+                if (filePath === path.resolve('/fake/project', '.my-ignore')) {
                     return Promise.resolve('# A comment\n/dist\n')
                 }
                 return Promise.reject(new Error('ENOENT'))
@@ -55,7 +55,9 @@ describe('config.js', () => {
 
         it('should only return defaults if no ignore files are found', async () => {
             // Mock all reads to fail with "File not found"
-            mockedFsReadFile.mockRejectedValue(new Error('ENOENT'))
+            const enoentError = new Error('File not found')
+            enoentError.code = 'ENOENT'
+            mockedFsReadFile.mockRejectedValue(enoentError)
 
             const patterns = await loadIgnorePatterns(
                 '/fake/project',

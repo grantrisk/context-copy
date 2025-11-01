@@ -3,6 +3,7 @@ import path from 'path'
 import chalk from 'chalk'
 import { glob } from 'glob'
 import { parse } from '@babel/parser'
+import traverse from '@babel/traverse'
 import ignore from 'ignore'
 import { loadAliasConfig } from './config.js'
 
@@ -68,22 +69,25 @@ export function parseImports(fileContent) {
             plugins: ['jsx', 'typescript', 'decorators-legacy'], // Enable common syntax
         })
 
-        ast.program.body.forEach((node) => {
-            if (node.type === 'ImportDeclaration' && node.source) {
-                imports.add(node.source.value)
-            } // Also catch dynamic imports: import()
-            if (
-                node.type === 'ExpressionStatement' &&
-                node.expression.type === 'CallExpression' &&
-                node.expression.callee.type === 'Import'
-            ) {
-                if (
-                    node.expression.arguments[0] &&
-                    node.expression.arguments[0].type === 'StringLiteral'
-                ) {
-                    imports.add(node.expression.arguments[0].value)
+        // Use traverse to visit all nodes, not just the top level
+        traverse(ast, {
+            // Handles: import fs from 'fs'
+            ImportDeclaration(path) {
+                if (path.node.source) {
+                    imports.add(path.node.source.value)
                 }
-            }
+            },
+            // Handles: import('./foo.js') or () => import('./bar.js')
+            CallExpression(path) {
+                if (path.node.callee.type === 'Import') {
+                    if (
+                        path.node.arguments[0] &&
+                        path.node.arguments[0].type === 'StringLiteral'
+                    ) {
+                        imports.add(path.node.arguments[0].value)
+                    }
+                }
+            },
         })
     } catch (e) {
         console.warn(

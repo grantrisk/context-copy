@@ -4,11 +4,14 @@ import {
     countTokens,
 } from '../src/lib/utils.js'
 import { get_encoding } from 'tiktoken'
+import { describe, it, expect, beforeEach, jest } from '@jest/globals'
 
-// Mock the 'tiktoken' module
-jest.mock('tiktoken', () => ({
-    get_encoding: jest.fn(),
-}))
+jest.mock('tiktoken', () => {
+    const { jest } = require('@jest/globals') // Use require here
+    return {
+        get_encoding: jest.fn(),
+    }
+})
 
 const mockEncoding = {
     encode: jest.fn(),
@@ -26,11 +29,7 @@ describe('utils.js', () => {
 
     describe('buildFileTree', () => {
         it('should build a nested tree from a flat list', () => {
-            const fileList = [
-                'package.json',
-                'src/main.js',
-                'src/lib/utils.js',
-            ]
+            const fileList = ['package.json', 'src/main.js', 'src/lib/utils.js']
             const expectedTree = {
                 'package.json': null,
                 src: {
@@ -62,9 +61,9 @@ describe('utils.js', () => {
             // Note: 'src' (dir) comes before 'package.json' (file) due to sorting
             const expectedString =
                 '├─ src\n' +
-                '│  ├─ lib\n' +
-                '│  │  └─ utils.js\n' +
-                '│  └─ main.js\n' +
+                '│ ├─ lib\n' +
+                '│ │ └─ utils.js\n' +
+                '│ └─ main.js\n' +
                 '└─ package.json\n'
 
             expect(formatFileTreeForContext(tree)).toBe(expectedString)
