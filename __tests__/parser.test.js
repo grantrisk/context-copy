@@ -1,5 +1,5 @@
 import { parseImports } from '../src/lib/parser.js'
-import { describe, it, expect, jest } from '@jest/globals'
+import { describe, it, expect, vi } from 'vitest'
 
 describe('parser.js', () => {
     describe('parseImports', () => {
@@ -45,9 +45,9 @@ describe('parser.js', () => {
         })
 
         it('should handle syntax errors gracefully', () => {
-            const code = `import fs from 'fs' THIS IS A SYNTAX ERROR`
+            const code = 'import fs from \'fs\' THIS IS A SYNTAX ERROR'
             // Mock console.warn to suppress output
-            jest.spyOn(console, 'warn').mockImplementation(() => {})
+            vi.spyOn(console, 'warn').mockImplementation(() => {})
             const imports = parseImports(code)
             expect(imports).toEqual([])
             expect(console.warn).toHaveBeenCalled()

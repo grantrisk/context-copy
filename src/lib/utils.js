@@ -35,7 +35,7 @@ export function countTokens(text) {
     } catch (error) {
         console.warn(
             chalk.yellow(
-                "\nWarning: 'tiktoken' failed. Falling back to character-based token estimation."
+                '\nWarning: \'tiktoken\' failed. Falling back to character-based token estimation.'
             )
         )
         // A common fallback is to assume ~4 characters per token.

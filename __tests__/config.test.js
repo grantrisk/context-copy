@@ -2,12 +2,11 @@ import { loadIgnorePatterns } from '../src/lib/config.js'
 import { DEFAULT_IGNORE_PATTERNS } from '../src/lib/constants.js'
 import fs from 'fs/promises'
 import path from 'path'
-import { describe, it, expect, beforeEach, jest } from '@jest/globals'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-jest.mock('fs/promises', () => {
-    const { jest } = require('@jest/globals') // Use require here
+vi.mock('fs/promises', () => {
     return {
-        readFile: jest.fn(),
+        readFile: vi.fn(),
     }
 })
 
@@ -20,7 +19,7 @@ describe('config.js', () => {
             // Reset the mock before each test
             mockedFsReadFile.mockReset()
             // Mock console.warn to suppress output
-            jest.spyOn(console, 'warn').mockImplementation(() => {})
+            vi.spyOn(console, 'warn').mockImplementation(() => {})
         })
 
         it('should load defaults, .gitignore, and custom file', async () => {

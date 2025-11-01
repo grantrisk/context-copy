@@ -4,18 +4,17 @@ import {
     countTokens,
 } from '../src/lib/utils.js'
 import { get_encoding } from 'tiktoken'
-import { describe, it, expect, beforeEach, jest } from '@jest/globals'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-jest.mock('tiktoken', () => {
-    const { jest } = require('@jest/globals') // Use require here
+vi.mock('tiktoken', () => {
     return {
-        get_encoding: jest.fn(),
+        get_encoding: vi.fn(),
     }
 })
 
 const mockEncoding = {
-    encode: jest.fn(),
-    free: jest.fn(),
+    encode: vi.fn(),
+    free: vi.fn(),
 }
 
 describe('utils.js', () => {
@@ -86,7 +85,7 @@ describe('utils.js', () => {
                 throw error
             })
             // Mock console.warn to suppress output during test
-            jest.spyOn(console, 'warn').mockImplementation(() => {})
+            vi.spyOn(console, 'warn').mockImplementation(() => {})
 
             const text = 'hello world' // 11 chars
             const count = countTokens(text)
