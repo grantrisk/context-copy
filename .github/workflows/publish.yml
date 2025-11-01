@@ -13,7 +13,7 @@ jobs:
         # Give the workflow necessary permissions to create releases and push tags
         permissions:
             contents: write # To create releases and push tags
-            issues: write   # To comment on issues/PRs (optional, but standard)
+            issues: write # To comment on issues/PRs (optional, but standard)
             pull-requests: write # To comment on issues/PRs (optional, but standard)
 
         steps:
@@ -26,14 +26,14 @@ jobs:
             - name: Set up Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: "20.x"
+                  node-version: '20.x'
                   # Note: registry-url is no longer needed here as semantic-release handles NPM login
 
             - name: Install dependencies
               run: npm ci
 
-            # - name: Run tests (Uncomment when tests are ready)
-            #   run: npm test
+            - name: Run tests
+              run: npm test
 
             - name: Run semantic-release
               run: npx semantic-release
