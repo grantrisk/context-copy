@@ -1,9 +1,5 @@
 import chalk from 'chalk'
-import {
-    buildFileTree,
-    countTokens,
-    getContextSizeColor,
-} from './utils.js'
+import { buildFileTree, countTokens, getContextSizeColor } from './utils.js'
 
 /**
  * Recursively prints the file tree structure to the console.
@@ -60,9 +56,7 @@ export function displaySummary(content, fileCount, fileList) {
             color(`\n✅ Success! Copied ${fileCount} files to the clipboard.`)
         )
     )
-    console.log(
-        color(`   Total Tokens (est.): ${tokenCount.toLocaleString()}`)
-    )
+    console.log(color(`   Total Tokens (est.): ${tokenCount.toLocaleString()}`))
     console.log(color(`   Total Lines: ${lineCount.toLocaleString()}`))
     console.log(color(`   Total Chars: ${charCount.toLocaleString()}`))
     console.log(color(`   Total Size: ${contentSizeKB} KB`))

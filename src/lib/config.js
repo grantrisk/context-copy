@@ -1,8 +1,8 @@
 import fs from 'fs/promises'
 import path from 'path'
 import chalk from 'chalk'
-import {loadConfig} from 'tsconfig-paths'
-import {DEFAULT_IGNORE_PATTERNS} from './constants.js'
+import { loadConfig } from 'tsconfig-paths'
+import { DEFAULT_IGNORE_PATTERNS } from './constants.js'
 
 /**
  * Loads ignore patterns from default, .gitignore, and custom ignore files.
@@ -87,7 +87,7 @@ export function loadAliasConfig(rootPath) {
         return null
     }
 
-    const {paths} = configLoaderResult
+    const { paths } = configLoaderResult
 
     if (!paths || Object.keys(paths).length === 0) {
         console.warn(
@@ -113,5 +113,5 @@ export function loadAliasConfig(rootPath) {
         )[0]
     }
 
-    return {paths: cleanedPaths}
+    return { paths: cleanedPaths }
 }

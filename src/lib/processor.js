@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import chalk from 'chalk'
-import {glob} from 'glob'
+import { glob } from 'glob'
 
 /**
  * Processes a directory, reads non-ignored files, and concatenates their content.

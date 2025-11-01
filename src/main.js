@@ -1,11 +1,11 @@
 import fs from 'fs/promises'
 import clipboard from 'clipboardy'
 import chalk from 'chalk'
-import {findProjectRoot, loadIgnorePatterns} from './lib/config.js'
-import {processDirectory, processSingleFile} from './lib/processor.js'
-import {processFileWithImports} from './lib/parser.js'
-import {buildFileTree, formatFileTreeForContext} from './lib/utils.js'
-import {displaySummary} from './lib/display.js'
+import { findProjectRoot, loadIgnorePatterns } from './lib/config.js'
+import { processDirectory, processSingleFile } from './lib/processor.js'
+import { processFileWithImports } from './lib/parser.js'
+import { buildFileTree, formatFileTreeForContext } from './lib/utils.js'
+import { displaySummary } from './lib/display.js'
 
 /**
  * The main function that orchestrates the entire process.
@@ -60,8 +60,8 @@ export async function main(targetPath, options) {
             throw new Error('The specified path is not a file or a directory.')
         }
 
-        let {content} = result
-        const {fileCount, fileList} = result
+        let { content } = result
+        const { fileCount, fileList } = result
 
         if (fileCount === 0) {
             console.log(chalk.yellow('No files were read. Nothing to copy.'))
