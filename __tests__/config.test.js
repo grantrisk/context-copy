@@ -4,11 +4,12 @@ import fs from 'fs/promises'
 import path from 'path'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-vi.mock('fs/promises', () => {
-    return {
+vi.mock('fs/promises', () => ({
+    default: {
         readFile: vi.fn(),
-    }
-})
+    },
+}))
+
 
 // Cast the mock for type safety in the test
 const mockedFsReadFile = fs.readFile
