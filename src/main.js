@@ -10,7 +10,7 @@ import { displaySummary } from './lib/display.js'
 /**
  * The main function that orchestrates the entire process.
  * @param {string} targetPath - The full path to the project directory or file.
- *KA @param {object} options - The CLI options from commander.
+ * @param {object} options - The CLI options from commander.
  */
 export async function main(targetPath, options) {
     try {

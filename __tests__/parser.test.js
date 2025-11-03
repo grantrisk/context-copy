@@ -45,7 +45,7 @@ describe('parser.js', () => {
         })
 
         it('should handle syntax errors gracefully', () => {
-            const code = 'import fs from \'fs\' THIS IS A SYNTAX ERROR'
+            const code = "import fs from 'fs' THIS IS A SYNTAX ERROR"
             // Mock console.warn to suppress output
             vi.spyOn(console, 'warn').mockImplementation(() => {})
             const imports = parseImports(code)

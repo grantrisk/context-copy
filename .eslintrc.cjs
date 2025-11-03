@@ -24,9 +24,6 @@ module.exports = {
     rules: {
         // --- General JS/Best Practices ---
         'no-console': ['warn', { allow: ['warn', 'error', 'log'] }],
-        semi: ['error', 'never'], // Consistent with .prettierrc
-        quotes: ['error', 'single'], // Consistent with .prettierrc
-        indent: ['error', 4, { SwitchCase: 1 }], // Consistent with .prettierrc
         'prefer-const': 'error',
         'no-unused-vars': [
             'error',

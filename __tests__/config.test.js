@@ -10,7 +10,6 @@ vi.mock('fs/promises', () => ({
     },
 }))
 
-
 // Cast the mock for type safety in the test
 const mockedFsReadFile = fs.readFile
 
