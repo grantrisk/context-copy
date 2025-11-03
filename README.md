@@ -72,6 +72,7 @@ ccopy src/main.js --follow-imports --deep
 | `--follow-imports` | `-f`  |          | When used with a single file, it enables tracing and including **local** imports (relative and aliased) into the context.             | Off (Directory Scan) |
 | `--deep`           | `-d`  |          | Recursively follow imports (imports of imports, up to $\text{Infinity}$ depth). This option requires `--follow-imports` to be active. | Off (Shallow Trace)  |
 | `--prepend-tree`   | `-p`  |          | Prepends the text-based file tree structure to the copied context.                                                                    | Off                  |
+| `--output`         | `-o`  | `<path>` | Save the context to a specified file instead of copying to the clipboard.                                                             | Off                  |
 | `--version`        | `-V`  |          | Output the version number.                                                                                                            |                      |
 | `--help`           | `-h`  |          | Display help for command.                                                                                                             |                      |
 

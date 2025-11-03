@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import clipboard from 'clipboardy'
 import chalk from 'chalk'
+import path from 'path'
 import { findProjectRoot, loadIgnorePatterns } from './lib/config.js'
 import { processDirectory, processSingleFile } from './lib/processor.js'
 import { processFileWithImports } from './lib/parser.js'
@@ -87,7 +88,38 @@ export async function main(targetPath, options) {
             content = treeHeader + treeString + treeFooter + content
         }
 
-        await clipboard.write(content)
+        if (options.output) {
+            // If an output path is provided
+            let outputPath = path.resolve(options.output)
+
+            try {
+                // Check if the provided path already exists and is a directory
+                const stats = await fs.stat(outputPath)
+                if (stats.isDirectory()) {
+                    console.log(
+                        chalk.blue(
+                            `Output path is a directory. Appending default filename 'context.txt'.`
+                        )
+                    )
+                    outputPath = path.join(outputPath, 'context.txt')
+
+                    // Update options.output so displaySummary shows the correct path
+                    options.output = path.relative(process.cwd(), outputPath)
+                }
+            } catch (e) {
+                // ENOENT (Error, No Entry) means the file/dir doesn't exist, which is fine.
+                // We'll create the file at that path.
+                if (e.code !== 'ENOENT') {
+                    throw e // Re-throw other errors (like permissions)
+                }
+            }
+
+            await fs.writeFile(outputPath, content)
+        } else {
+            // Otherwise, use the clipboard
+            await clipboard.write(content)
+        }
+
         displaySummary(content, fileCount, fileList)
     } catch (error) {
         console.error(chalk.red.bold('\n❌ An error occurred:'))

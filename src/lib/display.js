@@ -39,8 +39,9 @@ function printFileTree(node, prefix) {
  * @param {string} content - The concatenated content.
  * @param {number} fileCount - The number of files processed.
  * @param {string[]} fileList - The list of processed files.
+ * @param {object} options - Additional options (if any).
  */
-export function displaySummary(content, fileCount, fileList) {
+export function displaySummary(content, fileCount, fileList, options = {}) {
     console.log(chalk.blue.bold('\n--- Copied Files ---'))
     const fileTree = buildFileTree(fileList)
     printFileTree(fileTree, '')
@@ -51,11 +52,11 @@ export function displaySummary(content, fileCount, fileList) {
     const contentSizeKB = (Buffer.byteLength(content, 'utf8') / 1024).toFixed(2)
     const color = getContextSizeColor(tokenCount)
 
-    console.log(
-        chalk.bold(
-            color(`\n✅ Success! Copied ${fileCount} files to the clipboard.`)
-        )
-    )
+    const successMessage = options.output
+        ? `\n✅ Success! Saved ${fileCount} files to ${options.output}.`
+        : `\n✅ Success! Copied ${fileCount} files to the clipboard.`
+
+    console.log(chalk.bold(color(successMessage)))
     console.log(color(`   Total Tokens (est.): ${tokenCount.toLocaleString()}`))
     console.log(color(`   Total Lines: ${lineCount.toLocaleString()}`))
     console.log(color(`   Total Chars: ${charCount.toLocaleString()}`))

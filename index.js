@@ -36,6 +36,10 @@ program
         '-p, --prepend-tree',
         'Include the text-based file tree at the very top of the copied context.'
     )
+    .option(
+        '-o, --output <path>',
+        'Save the context to a file instead of the clipboard.'
+    )
     .action(async (projectPath, options) => {
         // Resolve the full path to ensure consistency
         const fullPath = path.resolve(projectPath)
