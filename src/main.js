@@ -120,7 +120,7 @@ export async function main(targetPath, options) {
             await clipboard.write(content)
         }
 
-        displaySummary(content, fileCount, fileList)
+        displaySummary(content, fileCount, fileList, options)
     } catch (error) {
         console.error(chalk.red.bold('\n❌ An error occurred:'))
         console.error(chalk.red(error.message))
