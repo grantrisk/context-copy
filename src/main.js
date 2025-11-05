@@ -38,7 +38,11 @@ export async function main(targetPath, options) {
 
         // 3. Decide processing strategy
         if (stats.isDirectory()) {
-            result = await processDirectory(projectRoot, ignorePatterns)
+            result = await processDirectory(
+                projectRoot,
+                ignorePatterns,
+                options
+            )
         } else if (stats.isFile()) {
             if (options.followImports) {
                 console.log(

@@ -7,10 +7,17 @@ import { glob } from 'glob'
  * Processes a directory, reads non-ignored files, and concatenates their content.
  * @param {string} dirPath - The directory to scan.
  * @param {string[]} ignorePatterns - An array of glob patterns to ignore.
+ * * @param {object} options - The CLI options.
  * @returns {Promise<{content: string, fileCount: number, fileList: string[]}>}
  */
-export async function processDirectory(dirPath, ignorePatterns) {
-    const allFiles = await glob('**/*', {
+export async function processDirectory(dirPath, ignorePatterns, options = {}) {
+    // If includePatterns are provided, use them as the base patterns.
+    // Otherwise, scan everything ('**/*').
+    const patterns =
+        options.includePatterns && options.includePatterns.length > 0
+            ? options.includePatterns
+            : ['**/*']
+    const allFiles = await glob(patterns, {
         cwd: dirPath,
         dot: true, // Include dotfiles
         nodir: true, // Exclude directories from the result set

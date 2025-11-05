@@ -62,19 +62,32 @@ To **recursively** copy all imports (imports of imports, etc.):
 ccopy src/main.js --follow-imports --deep
 ```
 
+### 🎯 Target Specific Files with --only
+
+You can invert the logic from _ignoring_ files to _only including_ files that match specific glob patterns. This is useful for grabbing a specific slice of a project.
+
+```bash
+# Only copy .js files from the 'src/components' directory
+ccopy --only "src/components/**/*.js"
+
+# You can use the flag multiple times
+ccopy --only "src/main.js" --only "src/lib/utils.js"
+```
+
 ---
 
 ## Command Options
 
-| Option             | Alias | Argument | Description                                                                                                                           | Default              |
-| :----------------- | :---- | :------- | :------------------------------------------------------------------------------------------------------------------------------------ | :------------------- |
-| `--ignore-file`    | `-i`  | `<path>` | Path to a custom ignore file, like a `.contextignore`. Rules in this file are merged with defaults and `.gitignore`.                  | `.contextignore`     |
-| `--follow-imports` | `-f`  |          | When used with a single file, it enables tracing and including **local** imports (relative and aliased) into the context.             | Off (Directory Scan) |
-| `--deep`           | `-d`  |          | Recursively follow imports (imports of imports, up to $\text{Infinity}$ depth). This option requires `--follow-imports` to be active. | Off (Shallow Trace)  |
-| `--prepend-tree`   | `-p`  |          | Prepends the text-based file tree structure to the copied context.                                                                    | Off                  |
-| `--output`         | `-o`  | `<path>` | Save the context to a specified file instead of copying to the clipboard.                                                             | Off                  |
-| `--version`        | `-V`  |          | Output the version number.                                                                                                            |                      |
-| `--help`           | `-h`  |          | Display help for command.                                                                                                             |                      |
+| Option             | Alias | Argument    | Description                                                                                                                           | Default              |
+| :----------------- | :---- | :---------- | :------------------------------------------------------------------------------------------------------------------------------------ | :------------------- |
+| `--ignore-file`    | `-i`  | `<path>`    | Path to a custom ignore file, like a `.contextignore`. Rules in this file are merged with defaults and `.gitignore`.                  | `.contextignore`     |
+| `--follow-imports` | `-f`  |             | When used with a single file, it enables tracing and including **local** imports (relative and aliased) into the context.             | Off (Directory Scan) |
+| `--deep`           | `-d`  |             | Recursively follow imports (imports of imports, up to $\text{Infinity}$ depth). This option requires `--follow-imports` to be active. | Off (Shallow Trace)  |
+| `--prepend-tree`   | `-p`  |             | Prepends the text-based file tree structure to the copied context.                                                                    | Off                  |
+| `--output`         | `-o`  | `<path>`    | Save the context to a specified file instead of copying to the clipboard.                                                             | Off                  |
+| `--only`           |       | `<pattern>` | Only include files matching the glob pattern. Can be used multiple times. Inverts scan to be additive.                                | Off (Full Scan)      |
+| `--version`        | `-V`  |             | Output the version number.                                                                                                            |                      |
+| `--help`           | `-h`  |             | Display help for command.                                                                                                             |                      |
 
 ---
 

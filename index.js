@@ -40,6 +40,12 @@ program
         '-o, --output <path>',
         'Save the context to a file instead of the clipboard.'
     )
+    .option(
+        '--only <pattern>',
+        'Only include files matching the glob pattern (can be used multiple times)',
+        (value, previous) => previous.concat([value]),
+        []
+    )
     .action(async (projectPath, options) => {
         // Resolve the full path to ensure consistency
         const fullPath = path.resolve(projectPath)

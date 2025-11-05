@@ -7,34 +7,47 @@ import traverse from '@babel/traverse'
 import ignore from 'ignore'
 import { loadAliasConfig } from './config.js'
 
+const SUPPORTED_EXTENSIONS = [
+    '.js',
+    '.mjs',
+    '.cjs',
+    '.jsx',
+    '.ts',
+    '.tsx',
+    '.json',
+]
+const EXT_REGEX = new RegExp(
+    `(${SUPPORTED_EXTENSIONS.join('|').replace(/\./g, '\\.')})$`
+)
+
 /**
  * Scans the project and builds a map for resolving module paths.
  * @param {string} projectRoot - The absolute path to the project root.
  * @param {string[]} ignorePatterns - An array of glob patterns to ignore.
+ * @param {object} options - The CLI options.
  * @returns {Promise<Map<string, string>>}
  */
-async function buildFileMap(projectRoot, ignorePatterns) {
+async function buildFileMap(projectRoot, ignorePatterns, options = {}) {
     console.log(chalk.gray('Building project file map...'))
     const fileMap = new Map()
-    const allFiles = await glob('**/*', {
+    const patterns =
+        options.includePatterns && options.includePatterns.length > 0
+            ? options.includePatterns
+            : ['**/*']
+    const allFiles = await glob(patterns, {
         cwd: projectRoot,
         dot: true,
         nodir: true,
         ignore: ignorePatterns,
     })
 
-    const extensions = ['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.json']
-    const extRegex = new RegExp(
-        `(${extensions.join('|').replace(/\./g, '\\.')})$`
-    )
-
     for (const file of allFiles) {
         // Use forward slashes for consistency, as glob does
         const relativePath = file.replace(/\\/g, '/')
         const fileExt = path.extname(relativePath)
 
-        if (extensions.includes(fileExt)) {
-            const relativePathNoExt = relativePath.replace(extRegex, '')
+        if (SUPPORTED_EXTENSIONS.includes(fileExt)) {
+            const relativePathNoExt = relativePath.replace(EXT_REGEX, '')
 
             // Add the path without extension: 'src/components/button' -> 'src/components/button.tsx'
             if (!fileMap.has(relativePathNoExt)) {
@@ -116,7 +129,7 @@ export async function processFileWithImports(
     const fileList = []
 
     // 1. Build the file map ONCE.
-    const fileMap = await buildFileMap(projectRoot, ignorePatterns)
+    const fileMap = await buildFileMap(projectRoot, ignorePatterns, options)
     // 2. Load the alias config ONCE.
     const aliasConfig = loadAliasConfig(projectRoot)
     // Sort aliases from longest to shortest
@@ -203,8 +216,16 @@ export async function processFileWithImports(
                 .normalize(resolvedModulePath)
                 .replace(/\\/g, '/')
 
+            // --- NORMALIZE FOR LOOKUP ---
+            // The fileMap keys are extensionless. We must strip the extension
+            // from the resolved path to match the map's key format.
+            const modulePathForLookup = resolvedModulePath.replace(
+                EXT_REGEX,
+                ''
+            )
+
             // --- LOOKUP IN FILE MAP ---
-            resolvedRelativePath = fileMap.get(resolvedModulePath)
+            resolvedRelativePath = fileMap.get(modulePathForLookup)
 
             if (resolvedRelativePath) {
                 const type = importPath.startsWith('.') ? 'Relative' : 'Alias'
