@@ -46,6 +46,10 @@ program
         (value, previous) => previous.concat([value]),
         []
     )
+    .option(
+        '-D, --debug',
+        'Enable debug logging for detailed process tracing.'
+    )
     .action(async (projectPath, options) => {
         // Resolve the full path to ensure consistency
         const fullPath = path.resolve(projectPath)

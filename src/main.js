@@ -5,7 +5,11 @@ import path from 'path'
 import { findProjectRoot, loadIgnorePatterns } from './lib/config.js'
 import { processDirectory, processSingleFile } from './lib/processor.js'
 import { processFileWithImports } from './lib/parser.js'
-import { buildFileTree, formatFileTreeForContext } from './lib/utils.js'
+import {
+    buildFileTree,
+    formatFileTreeForContext,
+    createDebugger,
+} from './lib/utils.js'
 import { displaySummary } from './lib/display.js'
 
 /**
@@ -14,6 +18,9 @@ import { displaySummary } from './lib/display.js'
  * @param {object} options - The CLI options from commander.
  */
 export async function main(targetPath, options) {
+    const debug = createDebugger(options.debug)
+    debug(chalk.gray('Debug mode is ON'))
+
     try {
         const stats = await fs.stat(targetPath)
         let result
@@ -27,7 +34,7 @@ export async function main(targetPath, options) {
         }
         console.log(chalk.blue(`🚀 Scanning path: ${targetPath}`))
         if (projectRoot !== targetPath) {
-            console.log(chalk.blue(`Found project root: ${projectRoot}`))
+            debug(chalk.blue(`Found project root: ${projectRoot}`))
         }
 
         // 2. Load ignore patterns relative to the root

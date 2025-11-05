@@ -115,3 +115,18 @@ export function formatFileTreeForContext(node, prefix = '', treeString = '') {
     }
     return treeString
 }
+
+/**
+ * Creates a conditional logging function.
+ * @param {boolean} isDebug - Whether the debug mode is active.
+ * @returns {function} A function that only logs if isDebug is true.
+ */
+export function createDebugger(isDebug) {
+    if (isDebug) {
+        // Use chalk.gray for a clear debug prefix
+        return (...args) => console.log(chalk.gray('[DEBUG]'), ...args)
+    } else {
+        // Return a no-op function to avoid overhead when disabled
+        return () => {}
+    }
+}
