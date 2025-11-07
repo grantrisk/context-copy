@@ -86,6 +86,7 @@ ccopy --only "src/main.js" --only "src/lib/utils.js"
 | `--prepend-tree`   | `-p`  |             | Prepends the text-based file tree structure to the copied context.                                                                    | Off                  |
 | `--output`         | `-o`  | `<path>`    | Save the context to a specified file instead of copying to the clipboard.                                                             | Off                  |
 | `--only`           |       | `<pattern>` | Only include files matching the glob pattern. Can be used multiple times. Inverts scan to be additive.                                | Off (Full Scan)      |
+| `--debug`          | `-D`  |             | Enable verbose debugging output (internal logs, import resolution, ignored-file decisions, and stack traces).                         | Off                  |
 | `--version`        | `-V`  |             | Output the version number.                                                                                                            |                      |
 | `--help`           | `-h`  |             | Display help for command.                                                                                                             |                      |
 
