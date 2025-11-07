@@ -130,3 +130,10 @@ export function createDebugger(isDebug) {
         return () => {}
     }
 }
+
+/**
+ * Converts a kebab-case string to camelCase.
+ * @param {string} s - The kebab-case string.
+ * @returns {string} - The camelCase string.
+ */
+export const toCamelCase = (s) => s.replace(/-./g, (x) => x[1].toUpperCase())

@@ -2,7 +2,74 @@ import fs from 'fs/promises'
 import path from 'path'
 import chalk from 'chalk'
 import { loadConfig } from 'tsconfig-paths'
-import { DEFAULT_IGNORE_PATTERNS } from './constants.js'
+import {
+    DEFAULT_IGNORE_PATTERNS,
+    CONFIG_DIR,
+    CONFIG_FILE_PATH,
+} from './constants.js'
+
+/**
+ * Ensures the global config directory exists and returns the config file path.
+ * @param {function} debug - The optional debug logging function.
+ * @returns {Promise<string>} - The absolute path to the config file.
+ */
+export async function getGlobalConfigPath(debug = () => {}) {
+    try {
+        await fs.mkdir(CONFIG_DIR, { recursive: true })
+        debug(`Ensured config directory exists: ${CONFIG_DIR}`)
+    } catch (err) {
+        console.warn(
+            chalk.yellow(
+                `Warning: Could not create config directory at ${CONFIG_DIR}`
+            )
+        )
+        debug(`Failed to create config dir: ${err.message}`)
+    }
+    return CONFIG_FILE_PATH
+}
+
+/**
+ * Loads the global configuration file.
+ * @param {function} debug - The optional debug logging function.
+ * @returns {Promise<object>} - The parsed config object, or {} if not found.
+ */
+export async function loadGlobalConfig(debug = () => {}) {
+    const configPath = await getGlobalConfigPath(debug)
+    try {
+        const content = await fs.readFile(configPath, 'utf-8')
+        debug('Loaded global config file.')
+        return JSON.parse(content)
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            debug('No global config file found, returning empty object.')
+            return {} // File doesn't exist, which is fine
+        }
+        console.warn(
+            chalk.yellow(
+                `Warning: Could not read global config: ${error.message}`
+            )
+        )
+        return {} // Return empty on other errors (e.g., malformed JSON)
+    }
+}
+
+/**
+ * Saves an object to the global configuration file.
+ * @param {object} config - The configuration object to save.
+ * @param {function} debug - The optional debug logging function.
+ */
+export async function saveGlobalConfig(config, debug = () => {}) {
+    const configPath = await getGlobalConfigPath(debug)
+    try {
+        const content = JSON.stringify(config, null, 4) // Pretty-print JSON
+        await fs.writeFile(configPath, content, 'utf-8')
+        debug(`Saved global config to ${configPath}`)
+    } catch (error) {
+        console.error(
+            chalk.red(`Error: Failed to save global config: ${error.message}`)
+        )
+    }
+}
 
 /**
  * Loads ignore patterns from default, .gitignore, and custom ignore files.

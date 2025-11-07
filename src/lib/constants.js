@@ -1,3 +1,18 @@
+import path from 'path'
+import os from 'os'
+
+export const CONFIG_DIR = path.join(os.homedir(), '.context-copy')
+export const CONFIG_FILE_PATH = path.join(CONFIG_DIR, 'config.json')
+
+// A whitelist of keys (in user-friendly kebab-case) that can be set.
+export const VALID_CONFIG_KEYS = [
+    'prepend-tree',
+    'ignore-file',
+    'follow-imports',
+    'deep',
+    'debug',
+]
+
 // --- Default Ignore Patterns ---
 export const DEFAULT_IGNORE_PATTERNS = [
     // --- Configuration/Meta ---

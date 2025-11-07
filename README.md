@@ -76,6 +76,66 @@ ccopy --only "src/main.js" --only "src/lib/utils.js"
 
 ---
 
+## ⚙️ Persistent Configuration
+
+`context-copy` includes a `config` command to save persistent settings locally. This allows you to set your favorite defaults (like `--prepend-tree`) once, so you don't have to type them in every time.
+
+Settings are saved to a JSON file in your home directory (e.g., `~/.context-copy/config.json`).
+
+### Configuration Commands
+
+- **List current settings:**
+
+    ```bash
+    ccopy config list
+    ```
+
+    This will show all your saved settings and the path to the config file. If no settings are saved, it will say so.
+
+- **Set a default value:**
+  This is the primary command you'll use.
+
+    ```bash
+    # Always include the file tree by default
+    ccopy config set prepend-tree true
+
+    # Always use a different ignore file name
+    ccopy config set ignore-file .my-special-ignore
+    ```
+
+    The tool understands boolean strings like "true" and "false".
+
+- **Get a specific value:**
+
+    ```bash
+    ccopy config get prepend-tree
+    ```
+
+    This will output `true` (or whatever value is saved, or a default message if not set).
+
+- **Edit the raw config file:**
+  For power-users, you can open the `config.json` file directly in your default editor.
+    ```bash
+    ccopy config edit
+    ```
+    This will try to use `$EDITOR`, `nano`, or `notepad` depending on your system.
+
+### Configurable Keys
+
+You can set defaults for the following keys, which correspond to the main command-line flags:
+
+- `prepend-tree`
+- `ignore-file`
+- `follow-imports`
+- `deep`
+- `debug`
+
+### ❗ Important: Precedence
+
+**Command-line flags always win.** Any flag you provide in a command (e.g., `ccopy --prepend-tree false`) will override your saved default for that single run.
+
+---
+
 ## Command Options
 
 | Option             | Alias | Argument    | Description                                                                                                                           | Default              |
