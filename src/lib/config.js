@@ -8,19 +8,34 @@ import { DEFAULT_IGNORE_PATTERNS } from './constants.js'
  * Loads ignore patterns from default, .gitignore, and custom ignore files.
  * @param {string} rootPath - The root directory of the project.
  * @param {string} customIgnoreFileName - The name of the custom ignore file.
+ * @param {function} debug - The optional debug logging function.
  * @returns {Promise<string[]>} - A promise that resolves to an array of ignore patterns.
  */
-export async function loadIgnorePatterns(rootPath, customIgnoreFileName) {
+export async function loadIgnorePatterns(
+    rootPath,
+    customIgnoreFileName,
+    debug = () => {}
+) {
+    debug(chalk.gray('Starting to load ignore patterns...'))
     const allPatterns = new Set(DEFAULT_IGNORE_PATTERNS)
+
     // Helper to read and parse an ignore file
     const parseIgnoreFile = async (filePath) => {
+        const fileName = path.basename(filePath)
         try {
             const content = await fs.readFile(filePath, 'utf-8')
-            content
+            debug(chalk.gray(`Parsing ignore file: ${fileName}`))
+            const newPatterns = content
                 .split('\n')
                 .map((line) => line.trim())
                 .filter((line) => line && !line.startsWith('#'))
-                .forEach((pattern) => allPatterns.add(pattern))
+
+            newPatterns.forEach((pattern) => allPatterns.add(pattern))
+            debug(
+                chalk.gray(
+                    `Added ${newPatterns.length} patterns from ${fileName}`
+                )
+            )
         } catch (error) {
             if (error.code !== 'ENOENT') {
                 console.warn(
@@ -28,14 +43,20 @@ export async function loadIgnorePatterns(rootPath, customIgnoreFileName) {
                         `Warning: Could not read ignore file at ${filePath}.`
                     )
                 )
+            } else {
+                debug(
+                    chalk.gray(`No ignore file found at ${filePath}. Skipping.`)
+                )
             }
         }
     }
+
     // 1. Read .gitignore
     await parseIgnoreFile(path.resolve(rootPath, '.gitignore'))
     // 2. Read custom ignore file (e.g., .contextignore)
     await parseIgnoreFile(path.resolve(rootPath, customIgnoreFileName))
 
+    debug(chalk.gray(`Total ignore patterns loaded: ${allPatterns.size}`))
     return [...allPatterns]
 }
 
@@ -44,46 +65,59 @@ export async function loadIgnorePatterns(rootPath, customIgnoreFileName) {
  * @param {string} startPath - The file or directory to start searching from.
  * @returns {Promise<string>} - The absolute path to the project root.
  */
-export async function findProjectRoot(startPath) {
+export async function findProjectRoot(startPath, debug = () => {}) {
+    debug(chalk.gray(`Starting project root search from: ${startPath}`))
+
     let currentPath = (await fs.stat(startPath)).isFile()
         ? path.dirname(startPath)
         : startPath
 
     while (currentPath) {
         const packageJsonPath = path.join(currentPath, 'package.json')
+        debug(chalk.gray(`Checking for package.json in: ${currentPath}`))
         try {
             await fs.stat(packageJsonPath)
+            debug(chalk.green(`Found project root: ${currentPath}`))
             return currentPath // Found it
         } catch (e) {
             // Not found, go up
             const parentPath = path.dirname(currentPath)
             if (parentPath === currentPath) {
                 // Reached root of filesystem
+                debug(
+                    chalk.yellow(
+                        'Reached filesystem root without finding package.json.'
+                    )
+                )
                 break
             }
             currentPath = parentPath
         }
-    } // Fallback: if no package.json, return the directory we started from
-    return (await fs.stat(startPath)).isFile()
+    }
+
+    const fallbackPath = (await fs.stat(startPath)).isFile()
         ? path.dirname(startPath)
         : startPath
+
+    debug(
+        chalk.yellow(
+            `Falling back to start path directory as project root: ${fallbackPath}`
+        )
+    )
+    return fallbackPath
 }
 
 /**
- * Loads tsconfig/jsconfig and returns the raw alias configuration.
- * @param {string} rootPath - The project root directory.
- * @returns {{paths: Record<string, string[]>} | null} - The alias config or null.
+ * Loads TypeScript/JavaScript path aliases from tsconfig.json or jsconfig.json.
+ * @param {string} projectRoot - The project root directory.
+ * @param {function} debug - The optional debug logging function.
+ * @returns {{paths: Object<string, string>} | null}
  */
-export function loadAliasConfig(rootPath) {
-    const configLoaderResult = loadConfig(rootPath)
+export function loadAliasConfig(projectRoot, debug = () => {}) {
+    const configLoaderResult = loadConfig(projectRoot)
 
-    if (configLoaderResult.resultType === 'failed') {
-        console.warn(
-            chalk.yellow(
-                `\nWarning: Could not load tsconfig/jsconfig from ${rootPath}. Alias resolution will be disabled.`
-            )
-        )
-        console.warn(chalk.yellow(`  Reason: ${configLoaderResult.message}`))
+    if (!configLoaderResult || !configLoaderResult.configFileAbsolutePath) {
+        debug(chalk.gray('No tsconfig/jsconfig file found for path aliases.'))
         return null
     }
 
@@ -98,7 +132,7 @@ export function loadAliasConfig(rootPath) {
         return null
     }
 
-    console.log(
+    debug(
         chalk.gray(
             `Loaded path configuration from: ${configLoaderResult.configFileAbsolutePath}`
         )
