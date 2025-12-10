@@ -43,14 +43,16 @@ export async function processDirectory(
 
     let concatenatedContent = ''
     const fileList = []
+    const fileLineCounts = {}
 
     for (const file of allFiles) {
         const fullPath = path.join(dirPath, file)
         try {
             debug(chalk.cyan(`[FILE] Reading: ${file}`))
             const fileContent = await fs.readFile(fullPath, 'utf-8')
-            // Use the relative path from the glob result directly
             const relativePath = file
+            const lineCount = fileContent.split('\n').length
+            fileLineCounts[relativePath] = lineCount
 
             concatenatedContent += `=== File: ${relativePath} ===\n\n`
             concatenatedContent += fileContent
@@ -79,6 +81,7 @@ export async function processDirectory(
         content: concatenatedContent,
         fileCount: fileList.length,
         fileList,
+        fileLineCounts,
     }
 }
 
@@ -110,9 +113,13 @@ export async function processSingleFile(
 
     debug(chalk.bold.magenta('--- Finished Single File Process ---'))
 
+    const lineCount = fileContent.split('\n').length
+    const fileLineCounts = { [relativePath]: lineCount }
+
     return {
         content: concatenatedContent,
         fileCount: 1,
         fileList: [relativePath],
+        fileLineCounts,
     }
 }

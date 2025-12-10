@@ -75,7 +75,7 @@ export async function main(targetPath, options) {
             throw new Error('The specified path is not a file or a directory.')
         }
 
-        let { content } = result
+        let { content, fileLineCounts } = result
         const { fileCount, fileList } = result
 
         if (fileCount === 0) {
@@ -138,7 +138,7 @@ export async function main(targetPath, options) {
             await clipboard.write(content)
         }
 
-        displaySummary(content, fileCount, fileList, options)
+        displaySummary(content, fileCount, fileList, fileLineCounts, options)
     } catch (error) {
         console.error(chalk.red.bold('\n❌ An error occurred:'))
         console.error(chalk.red(error.message))
