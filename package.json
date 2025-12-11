@@ -71,16 +71,26 @@
         "branches": [
             "main"
         ],
-        "plugins": [
-            "@semantic-release/commit-analyzer",
-            "@semantic-release/release-notes-generator",
-            [
-                "@semantic-release/npm",
-                {
-                    "npmPublish": true,
-                    "verifyConditions": false
-                }
-            ],
+        "verifyConditions": [
+            "@semantic-release/github"
+        ],
+        "analyzeCommits": [
+            "@semantic-release/commit-analyzer"
+        ],
+        "generateNotes": [
+            "@semantic-release/release-notes-generator"
+        ],
+        "prepare": [
+            "@semantic-release/npm"
+        ],
+        "publish": [
+            "@semantic-release/npm",
+            "@semantic-release/github"
+        ],
+        "success": [
+            "@semantic-release/github"
+        ],
+        "fail": [
             "@semantic-release/github"
         ]
     },
