@@ -202,7 +202,6 @@ export async function main(targetPaths, options) {
     } catch (error) {
         console.error(chalk.red.bold('\n❌ An error occurred:'))
         console.error(chalk.red(error.message))
-        // console.error(error.stack) // Uncomment for deep debugging
         throw error // Re-throw to allow process to exit with error
     }
 }
