@@ -50,4 +50,7 @@ jobs:
             - name: 🚀 Run Semantic Release
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  # semantic-release requires this var to exist to pass verification,
+                  # but Trusted Publishing (provenance) will ignore its value.
+                  NPM_TOKEN: "placeholder"
               run: npx semantic-release
