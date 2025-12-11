@@ -2,7 +2,7 @@ import chalk from 'chalk'
 import { buildFileTree, countTokens, getContextSizeColor } from './utils.js'
 
 function calculateLineCounts(node, fileLineCounts, currentPath = '') {
-    let lineCounts = {}
+    const lineCounts = {}
     let totalLines = 0
 
     const entries = Object.keys(node)

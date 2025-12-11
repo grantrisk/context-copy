@@ -8,8 +8,8 @@ import { fileURLToPath } from 'url'
 import { readFileSync } from 'fs'
 import { main } from './src/main.js'
 import chalk from 'chalk'
+import { createDebugger } from './src/lib/utils.js'
 import {
-    createDebugger,
     loadGlobalConfig,
     saveGlobalConfig,
     getGlobalConfigPath,
@@ -59,6 +59,8 @@ configCommand
             console.log(
                 chalk.gray(`Valid keys are: ${VALID_CONFIG_KEYS.join(', ')}`)
             )
+            // Explicitly allow process.exit for CLI error handling
+            // eslint-disable-next-line no-process-exit
             process.exit(1)
         }
 
@@ -81,7 +83,7 @@ configCommand
     .action(async (key) => {
         const debug = createDebugger(true)
         const config = await loadGlobalConfig(debug)
-        if (config.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(config, key)) {
             console.log(config[key])
         } else {
             console.log(chalk.gray(`'${key}' is not set. Using default.`))
