@@ -67,11 +67,6 @@
         "semantic-release": "^24.2.9",
         "vitest": "^3.2.4"
     },
-    "release": {
-        "branches": [
-            "main"
-        ]
-    },
     "husky": {
         "hooks": {
             "pre-commit": "lint-staged"

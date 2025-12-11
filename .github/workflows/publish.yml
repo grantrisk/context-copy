@@ -2,12 +2,11 @@ name: Release and Publish
 
 on:
     push:
-        # Trigger the workflow only when code is pushed to the main branch
         branches:
             - main
 
 permissions:
-    contents: read # for checkout
+    contents: read
 
 jobs:
     release:
