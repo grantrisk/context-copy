@@ -1,5 +1,4 @@
 # Context Copy (`ccopy`)
-
 `context-copy` is a powerful and configurable command-line tool that recursively scans a project directory, concatenates the contents of relevant files into a single string, and copies it to your clipboard.
 
 It's designed to make it easy to grab the entire context of a codebase for use in Large Language Models (LLMs) like GPT-4, Claude, or Gemini.
