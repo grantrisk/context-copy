@@ -14,69 +14,123 @@ import { displaySummary } from './lib/display.js'
 
 /**
  * The main function that orchestrates the entire process.
- * @param {string} targetPath - The full path to the project directory or file.
+ * @param {string[]} targetPaths - An array of full paths to the project directories or files.
  * @param {object} options - The CLI options from commander.
  */
-export async function main(targetPath, options) {
+export async function main(targetPaths, options) {
     const debug = createDebugger(options.debug)
     debug(chalk.gray('Debug mode is ON'))
+    debug(chalk.gray(`Received paths: ${targetPaths.join(', ')}`))
 
     try {
-        const stats = await fs.stat(targetPath)
-        let result
+        // Determine Project Root
+        // We use the first path to find the project root. This is used for .gitignore
+        // and alias resolution. We assume all files belong to the same project context.
+        const primaryPath = targetPaths[0]
+        const statsFirst = await fs.stat(primaryPath)
         let projectRoot
 
-        // 1. Find project root first for context (aliases, ignores)
-        if (stats.isDirectory()) {
-            projectRoot = targetPath
+        if (statsFirst.isDirectory()) {
+            projectRoot = primaryPath
         } else {
-            projectRoot = await findProjectRoot(targetPath, debug)
-        }
-        console.log(chalk.blue(`🚀 Scanning path: ${targetPath}`))
-        if (projectRoot !== targetPath) {
-            debug(chalk.blue(`Found project root: ${projectRoot}`))
+            projectRoot = await findProjectRoot(primaryPath, debug)
         }
 
-        // 2. Load ignore patterns relative to the root
+        console.log(chalk.blue(`🚀 Scanning context...`))
+        debug(chalk.blue(`Determined project root: ${projectRoot}`))
+
+        // Load ignore patterns relative to the root
         const ignorePatterns = await loadIgnorePatterns(
             projectRoot,
             options.ignoreFile,
             debug
         )
 
-        // 3. Decide processing strategy
-        if (stats.isDirectory()) {
-            result = await processDirectory(
-                projectRoot,
-                ignorePatterns,
-                options,
-                debug
-            )
-        } else if (stats.isFile()) {
-            if (options.followImports) {
-                console.log(
-                    chalk.blue(
-                        `Following imports (${
-                            options.deep ? 'deep' : 'shallow'
-                        })...`
-                    )
-                )
-                result = await processFileWithImports(
-                    targetPath,
-                    projectRoot,
-                    options,
+        // Process all paths
+        let aggregateContent = ''
+        const aggregateFileList = []
+        const aggregateLineCounts = {}
+
+        // Track absolute paths to prevent duplicates across multiple arguments
+        const globalProcessedFiles = new Set()
+
+        for (const targetPath of targetPaths) {
+            const stats = await fs.stat(targetPath)
+            let result
+
+            if (stats.isDirectory()) {
+                debug(chalk.magenta(`Processing Directory: ${targetPath}`))
+                result = await processDirectory(
+                    targetPath, // This specific dir
                     ignorePatterns,
+                    options,
                     debug
                 )
+            } else if (stats.isFile()) {
+                debug(chalk.magenta(`Processing File: ${targetPath}`))
+                // Check if we already processed this file (e.g. via previous argument)
+                if (globalProcessedFiles.has(targetPath)) {
+                    debug(
+                        chalk.yellow(
+                            `Skipping duplicate file argument: ${targetPath}`
+                        )
+                    )
+                    continue
+                }
+
+                if (options.followImports) {
+                    console.log(
+                        chalk.blue(
+                            `Following imports for ${path.basename(
+                                targetPath
+                            )} (${options.deep ? 'deep' : 'shallow'})...`
+                        )
+                    )
+                    result = await processFileWithImports(
+                        targetPath,
+                        projectRoot,
+                        options,
+                        ignorePatterns,
+                        debug
+                    )
+                } else {
+                    result = await processSingleFile(
+                        targetPath,
+                        projectRoot,
+                        debug
+                    )
+                }
             } else {
-                result = await processSingleFile(targetPath, projectRoot, debug)
+                console.warn(
+                    chalk.yellow(`Skipping invalid path: ${targetPath}`)
+                )
+                continue
             }
-        } else {
-            throw new Error('The specified path is not a file or a directory.')
+
+            // Merge Results
+            if (result && result.fileList) {
+                // Filter out duplicates based on the global set
+                // Note: result.fileList contains relative paths
+                for (const relativeFile of result.fileList) {
+                    const absPath = path.resolve(projectRoot, relativeFile)
+
+                    if (!globalProcessedFiles.has(absPath)) {
+                        globalProcessedFiles.add(absPath)
+                        aggregateFileList.push(relativeFile)
+                    }
+                }
+
+                // Append content
+                aggregateContent += result.content
+
+                // Merge line counts
+                Object.assign(aggregateLineCounts, result.fileLineCounts)
+            }
         }
 
-        let { content, fileLineCounts } = result
-        const { fileCount, fileList } = result
+        let content = aggregateContent
+        const fileCount = aggregateFileList.length
+        const fileList = aggregateFileList
 
         if (fileCount === 0) {
             console.log(chalk.yellow('No files were read. Nothing to copy.'))
@@ -138,10 +192,17 @@ export async function main(targetPath, options) {
             await clipboard.write(content)
         }
 
-        displaySummary(content, fileCount, fileList, fileLineCounts, options)
+        displaySummary(
+            content,
+            fileCount,
+            fileList,
+            aggregateLineCounts,
+            options
+        )
     } catch (error) {
         console.error(chalk.red.bold('\n❌ An error occurred:'))
         console.error(chalk.red(error.message))
+        // console.error(error.stack) // Uncomment for deep debugging
         throw error // Re-throw to allow process to exit with error
     }
 }

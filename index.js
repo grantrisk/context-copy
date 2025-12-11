@@ -7,11 +7,20 @@ import { VALID_CONFIG_KEYS } from './src/lib/constants.js'
 import { fileURLToPath } from 'url'
 import { readFileSync } from 'fs'
 import { main } from './src/main.js'
+import chalk from 'chalk'
+import {
+    createDebugger,
+    loadGlobalConfig,
+    saveGlobalConfig,
+    getGlobalConfigPath,
+} from './src/lib/config.js'
+import { exec } from 'child_process'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const packageJsonPath = path.resolve(__dirname, 'package.json')
 const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+
 const configCommand = program
     .command('config')
     .description('Manage local configuration settings.')
@@ -107,7 +116,7 @@ program
     .description(
         'A CLI to aggregate and copy project file contents for LLM context.'
     )
-    .argument('[project-path]', 'The path to the project directory', '.')
+    .argument('[paths...]', 'One or more paths to files or directories', ['.'])
     .option(
         '-i, --ignore-file <path>',
         'Path to a custom ignore file (e.g., .contextignore)',
@@ -136,10 +145,10 @@ program
         []
     )
     .option('-D, --debug', 'Enable debug logging for detailed process tracing.')
-    .action(async (projectPath, options) => {
-        // Resolve the full path to ensure consistency
-        const fullPath = path.resolve(projectPath)
-        await main(fullPath, options)
+    .action(async (paths, options) => {
+        // Resolve all provided paths to absolute paths
+        const fullPaths = paths.map((p) => path.resolve(p))
+        await main(fullPaths, options)
     })
 
 program.parse(process.argv)
