@@ -37,8 +37,7 @@ jobs:
             - name: ✅ Run tests
               run: npm test
 
-            # - name: 🚀 Run Semantic Release
-            #   run: npx semantic-release
-            #   env:
-            #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            - run: npm publish
+            - name: 🚀 Run Semantic Release
+              run: npx semantic-release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
