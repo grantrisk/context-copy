@@ -2,7 +2,6 @@ name: Release and Publish
 
 on:
     push:
-        # Trigger the workflow only when code is pushed to the main branch
         branches:
             - main
 
@@ -14,24 +13,28 @@ jobs:
     release:
         name: Semantic Release
         runs-on: ubuntu-latest
-        # Give the workflow necessary permissions to create releases and push tags
+        # ⚠️ CRITICAL: Job permissions overwrite global permissions.
+        # We must explicitly include 'id-token: write' here for OIDC to work.
         permissions:
             contents: write # To create releases and push tags
-            issues: write # To comment on issues/PRs (optional, but standard)
-            pull-requests: write # To comment on issues/PRs (optional, but standard)
+            issues: write # To comment on issues/PRs
+            pull-requests: write # To comment on issues/PRs
+            id-token: write # <--- ADDED: Required for Trusted Publishing
 
         steps:
             - name: 📦 Checkout repository
               uses: actions/checkout@v4
               with:
-                  # This depth is required for semantic-release to analyze commit history
                   fetch-depth: 0
 
             - name: ⚙️ Set up Node.js
               uses: actions/setup-node@v4
               with:
                   node-version: '20.x'
-                  # Note: registry-url is no longer needed here as semantic-release handles NPM login
+
+            # ⚠️ ADDED: Trusted Publishing requires npm 11.5.1+
+            - name: ⬆️ Update npm
+              run: npm install -g npm@latest
 
             - name: ⬇️ Install dependencies
               run: npm ci
@@ -45,7 +48,7 @@ jobs:
             - name: 🚀 Run Semantic Release
               run: npx semantic-release
               env:
-                  # NPM_TOKEN is required for the @semantic-release/npm plugin to publish the package
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-                  # GITHUB_TOKEN is required for the @semantic-release/github plugin to create the release and tag
+                  # Use a placeholder to satisfy semantic-release's variable check.
+                  # The actual auth will be handled by OIDC via the npm CLI.
+                  NPM_TOKEN: 'placeholder_token_for_oidc'
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
