@@ -74,7 +74,13 @@
         "plugins": [
             "@semantic-release/commit-analyzer",
             "@semantic-release/release-notes-generator",
-            "@semantic-release/npm",
+            [
+                "@semantic-release/npm",
+                {
+                    "npmPublish": true,
+                    "verifyConditions": false
+                }
+            ],
             "@semantic-release/github"
         ]
     },
